@@ -2,11 +2,11 @@
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
     "description": "Colors LaTeX source the way xcolor colors the PDF (\\textcolor, \\color, \\colorbox, and one-argument macros built on them or on soul and ulem), and highlights editorial marks ([[rewrite]], xxrephrasexx, ((note)), ....expand....) in LaTeX, Markdown and plain text.",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "publisher": "local",
     "license": "MIT",
     "engines": {
-        "vscode": "^1.80.0"
+        "vscode": "^1.145.0"
     },
     "activationEvents": [
         "onLanguage:latex",
@@ -23,6 +23,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "On dark themes, lighten colors too dark to read."
+                },
+                "latexColors.marks.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand....."
                 }
             }
         }

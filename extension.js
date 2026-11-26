@@ -59,7 +59,7 @@ function refresh(editor) {
         }
         for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
     }
-    const found = marks(text);
+    const found = vscode.workspace.getConfiguration('latexColors').get('marks.enabled') ? marks(text) : [];
     for (const [kind, t] of markTypes) editor.setDecorations(t, found.filter(m => m.kind === kind).map(range));
 }
 

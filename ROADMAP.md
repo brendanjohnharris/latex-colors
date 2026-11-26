@@ -1,6 +1,6 @@
 # Roadmap to a Marketplace release
 
-**State at v0.2.0 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox` and one-argument macros built on them, from the open document only; highlights four editorial marks; one assertion script (`check.js`); no CI; publisher `local`. Each milestone below ends in a tagged release and lists what must hold before it is called done.
+**State at v0.2.1 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox` and one-argument macros built on them, from the open document only (latexdiff output included); highlights four editorial marks, on by default, off with `latexColors.marks.enabled`; one assertion script (`check.js`); no CI; publisher `local`; requires VS Code 1.145. Each milestone below ends in a tagged release and lists what must hold before it is called done.
 
 ## 1. Tests and CI (v0.3)
 
@@ -12,17 +12,41 @@
 
 **Done when** CI is green and every limitation fixed later arrives with a fixture.
 
-## 2. Parser completeness (v0.4)
+## 2. Adaptive colors from a probe compile (v0.4)
+
+The parser predicts colors on every keystroke; a probe compile then asks LaTeX for the true colors and overrides the predictions. A test on 2026-11-27 with the BorderlineResponsiveness preamble returned exact RGB for every comment macro (`\ben`, `\nao`, `\dai`, ...) and for expressions such as `green!50!black`, in one `pdflatex` run.
+
+**Probe document**
+- The root's preamble (everything before `\begin{document}`, with its `\input`s), then a generated body that calls each candidate command with an argument that records the current color: `\extractcolorspecs{.}` converted to `rgb` with `\convertcolorspec`, written with `\immediate\write` to `<job>.lcprobe`.
+- Candidates: every command used in the body with a braced argument, minus structural commands (`\section`, `\label`, `\ref`, `\cite`, `\includegraphics`, `\input`, `\url`, ...); and every color expression given to `\textcolor`, `\color` or `\colorbox`. This covers `dvipsnames` and other name sets, every model and expression, `\def` and xparse macros, and package commands such as `changes` and `todonotes`, with no tables or grammar in the extension.
+- Each candidate is isolated, so one that fails (soul's `\hl` tokenizes its argument; a command that needs a particular argument) loses only itself. A candidate whose color is unchanged from the surrounding text is not a color macro.
+- Highlights, strikethroughs and underlines are not colors and stay with the parser; so does the extent of each span.
+
+**When it runs**
+- On save, when the preamble hash or the set of candidates has changed; results cached per hash in workspace storage, so reopening a file costs nothing.
+- `-interaction=nonstopmode`, `-no-shell-escape`, a 30 s timeout, output in a temporary directory, run from the root's folder so relative `\input`s resolve. Off with `latexColors.probe.enabled`; it runs the preamble's code, as compiling the document does.
+
+**Engine**, mirroring LaTeX Workshop (v10.20.1, `out/src/compile/recipe.js`), read with `workspace.getConfiguration('latex-workshop', rootUri)`:
+1. Magic comments are read only from the comment block at the top of the root file. If `latex-workshop.latex.build.enableMagicComments` is true (its default) and there is a `% !TEX program = <engine>`, use it.
+2. Else, with magic comments enabled, `% !LW recipe = <name>` names the recipe.
+3. Else `latex-workshop.latex.recipe.default`: `first` (the default) takes the first entry of `latex-workshop.latex.recipes`; a recipe name takes that recipe; `lastUsed` is LaTeX Workshop's private state, so it falls back to `first`.
+4. In the recipe, the first tool (`latex-workshop.latex.tools`) that runs a TeX engine decides: `pdflatex`, `xelatex`, `lualatex`, `latex`, `platex` or `uplatex` directly; for `latexmk`, the flag (`-pdf` pdflatex, `-pdflua`/`-lualatex` lualatex, `-pdfxe`/`-xelatex` xelatex, `-pdfdvi`/`-dvi`/`-ps` latex), or without a flag `$pdf_mode` in the project's `latexmkrc`/`.latexmkrc`, then `~/.latexmkrc` and `$XDG_CONFIG_HOME/latexmk/latexmkrc` (1 pdflatex, 4 lualatex, 5 xelatex).
+5. Without LaTeX Workshop, or when nothing above names an engine: `% !TEX program`, else `pdflatex`.
+6. `latexColors.probe.engine` overrides all of this.
+
+The probe runs the engine directly, not `latexmk`, since one pass is enough.
+
+**Done when** probe colors override predictions in the editor, each engine-resolution step has a test against a mocked configuration, and a failing candidate never blocks the others.
+
+## 3. Parser completeness (v0.5)
 
 **Multi-file documents**
 - Find the root: a `% !TEX root = ...` comment, else the open file if it contains `\documentclass`, else a `latexColors.rootFile` setting, else the workspace `.tex` file that `\input`s or `\include`s the open one.
 - Read definitions from the root and every local file it pulls in (`\input`, `\include`, `\subfile`, and `\usepackage`/`\RequirePackage` of a `.sty` in the workspace), through `workspace.fs` so it also works on vscode.dev.
 - Cache definitions per root; invalidate with a `FileSystemWatcher` on those files.
 
-**Color names and models**
-- The `dvipsnames`, `svgnames` and `x11names` tables, active when xcolor is loaded with those options (in `\usepackage`, `\PassOptionsToPackage` or `\documentclass`). Generate the tables once from `dvipsnam.def`, `svgnam.def` and `x11nam.def` and commit the JSON.
-- Models `hsb`, `Hsb`, `HSB`, `named`; `\definecolorset`.
-- The rest of the xcolor expression grammar in common use: `.` (current color), extended expressions (`rgb:red,1;blue,2`).
+**Color names and models** (predictions only; the probe gives exact values)
+- The `dvipsnames`, `svgnames` and `x11names` tables, so predictions are right before the first probe. Generate them once from `dvipsnam.def`, `svgnam.def` and `x11nam.def` and commit the JSON.
 
 **Macros**
 - xparse definitions (`\NewDocumentCommand` and relatives) with `m`, `o`, `O{}` and `s` argument specs.
@@ -30,7 +54,7 @@
 - Macros built on other macros (`\newcommand\todo[1]{\ben{TODO: #1}}`), resolved recursively with a cycle guard.
 - Multi-argument macros: color the argument the body actually wraps, not always the first; optional arguments before it.
 - Environments whose begin code sets `\color` (`\newenvironment`): color the body.
-- Annotation packages: `changes` (`\added`, `\deleted`, `\replaced`, colored per `\definechangesauthor`), `todonotes` (`\todo`), ulem's `\dashuline` and `\dotuline`.
+- ulem's `\dashuline` and `\dotuline`.
 
 **Scanner**
 - Skip `\verb`, `verbatim`, `lstlisting`, `minted` and `comment` environments.
@@ -38,7 +62,7 @@
 
 **Done when** each item has a fixture and the fuzz test still passes.
 
-## 3. Performance (v0.5)
+## 4. Performance (v0.6)
 
 - Replace the quadratic span flattening with a sweep over sorted start and end events.
 - Reuse parsed definitions while the preamble is unchanged (hash of the text before `\begin{document}`).
@@ -47,10 +71,10 @@
 
 **Done when** typing in a 1 MB file shows no lag at the 250 ms debounce.
 
-## 4. Configuration and interface (v0.6)
+## 5. Configuration and interface (v0.7)
 
-- `latexColors.colors.enabled` and `latexColors.marks.enabled`. Marks are a personal convention, so they ship **off**, with the four current marks given in the README as an example.
-- `latexColors.marks.patterns`: a list of `{name, regex, color, background, fontStyle}`, validated on load, with errors shown once per session.
+- `latexColors.colors.enabled`, next to the existing `latexColors.marks.enabled` (marks stay in this extension and on by default).
+- `latexColors.marks.patterns`: a list of `{name, regex, color, background, fontStyle}` that replaces the four built-in marks, validated on load, with errors shown once per session.
 - `latexColors.marks.languages` (default `latex`, `markdown`, `plaintext`) and `latexColors.minLuminance` next to `liftDarkColors`.
 - Commands: Toggle colors, Toggle marks, Rescan.
 - Hover over a colored span to show its color expression and value.
@@ -58,13 +82,13 @@
 
 **Done when** every setting is in `package.json` with a description and covered by a test.
 
-## 5. Integration tests (alongside 2 to 4)
+## 6. Integration tests (alongside 2 to 5)
 
 - `@vscode/test-cli` with `@vscode/test-electron`: launch VS Code, open fixtures, call a hidden command `latexColors._spans` that returns the spans for the active editor, and compare with the fixture snapshots.
-- Run under `xvfb` in CI against the minimum and the current VS Code versions; set `engines.vscode` to the minimum that passes.
+- Run under `xvfb` in CI against current stable and Insiders. `engines.vscode` tracks the current stable release; older versions are not supported.
 - Manual checklist per release: light, dark and high-contrast themes; split editors; Remote SSH; typing latency in a large file.
 
-## 6. Publishing (v1.0)
+## 7. Publishing (v1.0)
 
 - **Name.** A Marketplace search for "latex color" on 2026-11-27 found no extension doing this (closest: "Add Latex Color Code", which inserts color commands). Settle the display name and extension ID before the first publish; neither can be reused freely later.
 - **Marketplace publisher.** Create one on the Marketplace publisher management page with a Microsoft account; create an Azure DevOps personal access token for "All accessible organizations" with the Marketplace "Manage" scope; `vsce login <publisher>`; replace `"publisher": "local"` in `package.json`.
@@ -74,13 +98,8 @@
 
 **Done when** a tag alone produces installable releases on both registries.
 
-## 7. After 1.0
+## 8. After 1.0
 
 - Issue templates (bug: a minimal `.tex` and a screenshot).
 - Semantic versioning: new syntax is a minor release, behavior changes to existing syntax are major.
-
-## Open questions
-
-- Should the editorial marks stay in this extension, or move to a separate one so this one stays strictly about LaTeX colors?
-- Which annotation packages matter most beyond plain macros (`changes`, `todonotes`)?
-- The lowest VS Code version to support.
+- Packages that color text from inside their own `.sty`, invisible to a parser of the document: `changes` (`\added`, `\deleted`, `\replaced`, colored per `\definechangesauthor`), `todonotes` (`\todo[color=...]`), `fixme`. Each needs built-in knowledge of the package; add one when someone asks.

@@ -7,6 +7,7 @@ A VS Code extension that colors LaTeX source the way xcolor colors the PDF, and 
 - `\textcolor{c}{...}`, `{\color{c} ...}` (to the end of the group or environment) and `\colorbox{c}{...}`.
 - One-argument macros defined with `\newcommand`, `\renewcommand`, `\providecommand` or `\DeclareRobustCommand` whose body uses those commands, soul's `\hl` (with `\sethlcolor`), or `\sout`, `\uwave` and `\uline`. A comment macro such as `\providecommand{\ben}[1]{\textcolor{myorange}{[#1]}}` colors every `\ben{...}`.
 - Colors: xcolor's base names, and every `\definecolor`, `\providecolor` and `\colorlet` in the document (models `rgb`, `RGB`, `HTML`, `cmyk`, `cmy`, `gray`), including expressions such as `red!50!blue`.
+- latexdiff output: `\DIFadd` and `\DIFdel` are defined in the diff's preamble, so they color like any other macro.
 
 Braces are matched to any depth; `%` comments and escaped `\{`, `\}`, `\%` are skipped. Where colored spans nest, the inner one wins.
 
@@ -23,7 +24,10 @@ Braces are matched to any depth; `%` comments and escaped `\{`, `\}`, `\%` are s
 
 | Setting | Default | |
 |---|---|---|
+| `latexColors.marks.enabled` | `true` | Highlight editorial marks |
 | `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read |
+
+Requires VS Code 1.145 or later.
 
 ## Install
 
