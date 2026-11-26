@@ -1,0 +1,6 @@
+check.js
+ROADMAP.md
+*.vsix
+.gitignore
+.github/**
+test/**
