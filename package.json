@@ -1,10 +1,35 @@
 {
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
-    "description": "Colors LaTeX source the way xcolor colors the PDF (\\textcolor, \\color, \\colorbox, and one-argument macros built on them or on soul and ulem), and highlights editorial marks ([[rewrite]], xxrephrasexx, ((note)), ....expand....) in LaTeX, Markdown and plain text.",
-    "version": "0.7.0",
-    "publisher": "local",
+    "description": "Colors LaTeX source the way xcolor colors the PDF, and highlights editorial marks in LaTeX, Markdown and plain text.",
+    "version": "0.9.0",
+    "publisher": "brendanjohnharris",
     "license": "MIT",
+    "icon": "images/icon.png",
+    "galleryBanner": {
+        "color": "#282C34",
+        "theme": "dark"
+    },
+    "categories": [
+        "Programming Languages",
+        "Visualization"
+    ],
+    "keywords": [
+        "latex",
+        "tex",
+        "xcolor",
+        "textcolor",
+        "color",
+        "comments",
+        "review",
+        "latexdiff",
+        "highlight"
+    ],
+    "pricing": "Free",
+    "homepage": "https://github.com/brendanjohnharris/latex-colors#readme",
+    "bugs": {
+        "url": "https://github.com/brendanjohnharris/latex-colors/issues"
+    },
     "engines": {
         "vscode": "^1.145.0"
     },
@@ -190,7 +215,8 @@
         "typecheck": "tsc --noEmit -p jsconfig.json",
         "package": "vsce package",
         "test:vscode": "vscode-test",
-        "bench": "node scripts/bench.js"
+        "bench": "node scripts/bench.js",
+        "icon": "rsvg-convert -w 256 -h 256 scripts/icon.svg -o images/icon.png"
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
@@ -198,6 +224,7 @@
         "@vscode/test-cli": "^0.0.15",
         "@vscode/test-electron": "^3.1.0",
         "@vscode/vsce": "4.1.1",
+        "ovsx": "^1.4.0",
         "typescript": "~5.9.3"
     }
 }

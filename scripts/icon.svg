@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- npm run icon renders this to images/icon.png. Fathom palette: chernoe, bermejo, baikal, seohae, ianthina, qinghai. -->
+  <rect width="256" height="256" rx="40" fill="#282C34"/>
+  <g fill="none" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#f93d53" d="M 88 42 C 62 42 62 56 62 82 L 62 106 C 62 121 55 128 42 128 C 55 128 62 135 62 150 L 62 174 C 62 200 62 214 88 214"/>
+    <path stroke="#6ea0f9" d="M 168 42 C 194 42 194 56 194 82 L 194 106 C 194 121 201 128 214 128 C 201 128 194 135 194 150 L 194 174 C 194 200 194 214 168 214"/>
+  </g>
+  <g stroke-width="16" stroke-linecap="round">
+    <line x1="100" y1="94" x2="156" y2="94" stroke="#ffa829"/>
+    <line x1="100" y1="128" x2="140" y2="128" stroke="#b97ad7"/>
+    <line x1="100" y1="162" x2="148" y2="162" stroke="#88bd69"/>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 # Roadmap to a Marketplace release
 
-**State at v0.7.0 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox`, colored environments and macros built on them (`\newcommand` and relatives, xparse, `\def`, `\let`, macros on macros, several arguments), with definitions from every file of a multi-file document, the xcolor name sets and models, and exact colors from a probe compile after each save; highlights editorial marks (four built in, or your own patterns); settings, commands and a hover; unit, fixture, fuzz and VS Code integration tests with CI; a 1 MB document scans in about 15 ms; publisher `local`; requires VS Code 1.145. Each milestone below ends in a tagged release and lists what must hold before it is called done.
+**State at v0.9.0 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox`, colored environments and macros built on them (`\newcommand` and relatives, xparse, `\def`, `\let`, macros on macros, several arguments), with definitions from every file of a multi-file document, the xcolor name sets and models, and exact colors from a probe compile after each save; highlights editorial marks (four built in, or your own patterns); settings, commands and a hover; unit, fixture, fuzz and VS Code integration tests with CI; a 1 MB document scans in about 15 ms; listing ready for publisher `brendanjohnharris` (not yet created), with a release workflow for the Marketplace and Open VSX; requires VS Code 1.145. Each milestone below ends in a tagged release and lists what must hold before it is called done.
 
 ## 1. Tests and CI (v0.3)
 

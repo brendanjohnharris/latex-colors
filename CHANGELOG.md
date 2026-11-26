@@ -2,6 +2,12 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.9.0 - 2026-11-27 (pre-release)
+
+### Added
+- Marketplace and Open VSX listing: publisher `brendanjohnharris`, icon, categories and keywords; `examples/demo.tex` shows every feature.
+- Release workflow: a version tag tests, packages and publishes to the Marketplace and Open VSX, and creates a GitHub Release with the `.vsix`; odd minor versions publish as pre-releases.
+
 ## 0.7.0 - 2026-11-27
 
 ### Added

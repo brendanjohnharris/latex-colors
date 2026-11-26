@@ -1,0 +1,38 @@
+\documentclass{article}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{soul}
+\usepackage[normalem]{ulem}
+\definecolor{myorange}{RGB}{255,102,51}
+\colorlet{soft}{myorange!40}
+\providecommand{\ben}[1]{\textcolor{myorange}{[Ben: #1]}}
+\providecommand{\nao}[1]{{\color{red}[Nao: #1]}}
+\providecommand{\claude}[1]{\textcolor[HTML]{0072B2}{[Claude: #1]}}
+\providecommand{\benhl}[1]{{\sethlcolor{soft}\hl{#1}}}
+\providecommand{\bencut}[1]{\textcolor{BrickRed}{\sout{#1}}}
+%DIF PREAMBLE
+\providecommand{\DIFadd}[1]{{\protect\color{blue}\uwave{#1}}}
+\providecommand{\DIFdel}[1]{{\protect\color{red}\sout{#1}}}
+\providecommand{\DIFaddbegin}{}
+\providecommand{\DIFaddend}{}
+\providecommand{\DIFdelbegin}{}
+\providecommand{\DIFdelend}{}
+
+\begin{document}
+
+\section{Comments}
+Critical transitions occur when a system loses stability \ben{cite the review here}.
+The exponent is approximately 1.5 \nao{over which range?}, and \benhl{this result holds in every animal}
+\bencut{as previously shown}. \claude{The second panel shows the fitted curve.}
+
+\section{Colors}
+The \textcolor{ForestGreen}{forest green}, \textcolor{red!60!blue}{mixed} and \colorbox{yellow}{boxed} words keep their
+colors, and {\color{Maroon} a switch colors the rest of its group \textbf{including bold text}} but not beyond.
+
+\section{latexdiff}
+The response \DIFdelbegin \DIFdel{was slower}\DIFdelend \DIFaddbegin \DIFadd{returned more slowly}\DIFaddend{} after the stimulus.
+
+\section{Editorial marks}
+This sentence [[needs a rewrite]], this one xxneeds rephrasingxx, and N = xxx subjects.
+((Is this the right section for the methods?)) ....expand on the controls here....
+
+\end{document}

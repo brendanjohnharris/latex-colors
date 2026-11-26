@@ -1,0 +1,55 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - name: Tag matches package.json
+        run: test "$GITHUB_REF_NAME" = "v$(node -p 'require("./package.json").version')"
+      - uses: TeX-Live/setup-texlive-action@v4
+        with:
+          packages: |
+            scheme-basic
+            xcolor
+            infwarerr
+            soul
+            ulem
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: xvfb-run -a npm run test:vscode
+      - name: Package
+        id: pkg
+        run: | # an odd minor version is a pre-release (Marketplace guidance: major.ODD.patch)
+          version=$(node -p 'require("./package.json").version')
+          pre=$(node -p "require('./package.json').version.split('.')[1] % 2 ? '--pre-release' : ''")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "pre=$pre" >> "$GITHUB_OUTPUT"
+          npx vsce package $pre -o "latex-colors-$version.vsix"
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+          PRE: ${{ steps.pkg.outputs.pre }}
+        run: |
+          awk -v v="$VERSION" 'index($0, "## " v " ") == 1 {on = 1; next} /^## / && on {exit} on' CHANGELOG.md > notes.md
+          gh release create "v$VERSION" "latex-colors-$VERSION.vsix" --title "v$VERSION" --notes-file notes.md ${PRE:+--prerelease}
+      - name: Visual Studio Marketplace
+        run: npx vsce publish ${{ steps.pkg.outputs.pre }} --packagePath "latex-colors-${{ steps.pkg.outputs.version }}.vsix"
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      - name: Open VSX
+        run: npx ovsx publish "latex-colors-${{ steps.pkg.outputs.version }}.vsix" # pre-release state comes from the package
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
