@@ -1,0 +1,18 @@
+[
+  {
+    "text": "\\textcolor{purple}{[#1]}",
+    "start": 22,
+    "end": 46,
+    "style": {
+      "color": "#bf0040"
+    }
+  },
+  {
+    "text": "\\note{see {nested {twice}} and \\url{https://example.org/a_b?c=1}}",
+    "start": 48,
+    "end": 113,
+    "style": {
+      "color": "#bf0040"
+    }
+  }
+]

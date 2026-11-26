@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\\color{blue} to the end of the document\nand the next paragraph\n",
+    "start": 5,
+    "end": 68,
+    "style": {
+      "color": "#0000ff"
+    }
+  }
+]

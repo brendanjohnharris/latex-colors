@@ -1,3 +1,4 @@
+// @ts-check
 // Editorial marks (scientific-writing skill): [[rewrite]], xxrephrasexx, ((note)), ....expand....
 'use strict';
 

@@ -1,6 +1,6 @@
 # Roadmap to a Marketplace release
 
-**State at v0.2.1 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox` and one-argument macros built on them, from the open document only (latexdiff output included); highlights four editorial marks, on by default, off with `latexColors.marks.enabled`; one assertion script (`check.js`); no CI; publisher `local`; requires VS Code 1.145. Each milestone below ends in a tagged release and lists what must hold before it is called done.
+**State at v0.3.0 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox` and one-argument macros built on them, from the open document only (latexdiff output included); highlights four editorial marks, on by default, off with `latexColors.marks.enabled`; unit, fixture and fuzz tests with CI; publisher `local`; requires VS Code 1.145. Each milestone below ends in a tagged release and lists what must hold before it is called done.
 
 ## 1. Tests and CI (v0.3)
 

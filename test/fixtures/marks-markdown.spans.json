@@ -1,0 +1,14 @@
+[
+  {
+    "text": "[[rewrite]]",
+    "start": 13,
+    "end": 24,
+    "mark": "rewrite"
+  },
+  {
+    "text": "((note))",
+    "start": 70,
+    "end": 78,
+    "mark": "note"
+  }
+]

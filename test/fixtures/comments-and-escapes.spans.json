@@ -1,0 +1,18 @@
+[
+  {
+    "text": "\\textcolor{red}{kept % comment \\textcolor{blue}{lost}\nstill red}",
+    "start": 38,
+    "end": 102,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor{blue}{a \\} b}",
+    "start": 119,
+    "end": 143,
+    "style": {
+      "color": "#0000ff"
+    }
+  }
+]

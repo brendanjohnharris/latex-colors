@@ -2,7 +2,7 @@
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
     "description": "Colors LaTeX source the way xcolor colors the PDF (\\textcolor, \\color, \\colorbox, and one-argument macros built on them or on soul and ulem), and highlights editorial marks ([[rewrite]], xxrephrasexx, ((note)), ....expand....) in LaTeX, Markdown and plain text.",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "publisher": "local",
     "license": "MIT",
     "engines": {
@@ -14,7 +14,7 @@
         "onLanguage:markdown",
         "onLanguage:plaintext"
     ],
-    "main": "./extension.js",
+    "main": "./src/extension.js",
     "contributes": {
         "configuration": {
             "title": "LaTeX Colors",
@@ -35,5 +35,17 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/brendanjohnharris/latex-colors"
+    },
+    "scripts": {
+        "test": "node --test \"test/**/*.test.js\"",
+        "test:update": "UPDATE=1 node --test \"test/**/*.test.js\"",
+        "typecheck": "tsc --noEmit -p jsconfig.json",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "@types/vscode": "1.145.0",
+        "@vscode/vsce": "4.1.1",
+        "typescript": "~5.9.3"
     }
 }

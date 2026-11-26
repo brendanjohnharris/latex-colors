@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\\color{teal} inside \\emph{still} inside",
+    "start": 8,
+    "end": 47,
+    "style": {
+      "color": "#008080"
+    }
+  }
+]

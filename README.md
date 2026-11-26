@@ -38,7 +38,15 @@ code --install-extension latex-colors-*.vsix
 
 ## Development
 
-`node check.js [file.tex]` runs the assertions and, given a file, lists the spans found in it. See [ROADMAP.md](ROADMAP.md) for the path to a Marketplace release.
+```sh
+npm install
+npm test                         # unit, fixture and fuzz tests
+npm run test:update              # rewrite fixture snapshots (test/fixtures/*.spans.json); review the diff
+npm run typecheck
+node scripts/spans.js file.tex   # list the spans found in a file
+```
+
+See [ROADMAP.md](ROADMAP.md) for the path to a Marketplace release.
 
 ## Limitations
 

@@ -1,0 +1,26 @@
+[
+  {
+    "text": "\\textcolor{red}{red text}",
+    "start": 6,
+    "end": 31,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor[rgb]{0,0.5,1}{model text}",
+    "start": 36,
+    "end": 72,
+    "style": {
+      "color": "#0080ff"
+    }
+  },
+  {
+    "text": "\\colorbox{yellow}{boxed}",
+    "start": 77,
+    "end": 101,
+    "style": {
+      "bg": "#ffff00"
+    }
+  }
+]

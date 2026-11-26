@@ -1,0 +1,74 @@
+[
+  {
+    "text": "\\textcolor{red}{#1}",
+    "start": 20,
+    "end": 39,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor{blue}{#1}",
+    "start": 64,
+    "end": 84,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\textcolor{teal}{#1}",
+    "start": 108,
+    "end": 128,
+    "style": {
+      "color": "#008080"
+    }
+  },
+  {
+    "text": "\\color{orange}#1",
+    "start": 162,
+    "end": 178,
+    "style": {
+      "color": "#ff8000"
+    }
+  },
+  {
+    "text": "\\textcolor{red}{no arguments}",
+    "start": 198,
+    "end": 227,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\na{A}",
+    "start": 229,
+    "end": 235,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\nb{B}",
+    "start": 236,
+    "end": 242,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\nc{C}",
+    "start": 243,
+    "end": 249,
+    "style": {
+      "color": "#008080"
+    }
+  },
+  {
+    "text": "\\nd{D}",
+    "start": 250,
+    "end": 256,
+    "style": {
+      "color": "#ff8000"
+    }
+  }
+]

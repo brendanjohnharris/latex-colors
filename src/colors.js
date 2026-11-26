@@ -1,5 +1,6 @@
+// @ts-check
 // Finds coloured spans in LaTeX source the way xcolor colours the PDF.
-// Pure functions (no vscode import), so check.js can run them under plain node.
+// Pure functions (no vscode import), so tests run them under plain node.
 'use strict';
 
 const BASE = { // xcolor.sty base set, rgb
@@ -59,7 +60,7 @@ function parseSpec(model, spec) {
         case 'rgb': return ok(v, 3) ? v : null;
         case 'RGB': return ok(v, 3) ? v.map(x => x / 255) : null;
         case 'HTML': return /^[0-9a-fA-F]{6}$/.test(spec) ? [0, 2, 4].map(k => parseInt(spec.slice(k, k + 2), 16) / 255) : null;
-        case 'cmyk': return ok(v, 4) ? [0, 1, 2].map(k => (1 - v[k]) * (1 - v[3])) : null;
+        case 'cmyk': return ok(v, 4) ? [0, 1, 2].map(k => 1 - Math.min(1, v[k] + v[3])) : null; // xcolor.sty \XC@cnv@cmyk@cmy
         case 'cmy': return ok(v, 3) ? v.map(x => 1 - x) : null;
         case 'gray': return ok(v, 1) ? [v[0], v[0], v[0]] : null;
     }
@@ -180,5 +181,6 @@ function flatten(raw) {
 }
 
 const scan = text => flatten(spans(text));
+const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
-module.exports = { scan, spans, definitions, parseExpr, parseSpec, stripComments, BASE };
+module.exports = { scan, spans, definitions, parseExpr, parseSpec, stripComments, hex, BASE };

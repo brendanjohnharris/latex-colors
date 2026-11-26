@@ -1,0 +1,70 @@
+[
+  {
+    "text": "\\color{blue}\\uwave{#1}",
+    "start": 241,
+    "end": 263,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\color{red}\\sout{#1}",
+    "start": 317,
+    "end": 337,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\DIFadd{#1}",
+    "start": 564,
+    "end": 575,
+    "style": {
+      "color": "#0000ff",
+      "deco": "underline wavy"
+    }
+  },
+  {
+    "text": "\\DIFdel{#1}",
+    "start": 621,
+    "end": 632,
+    "style": {
+      "color": "#ff0000",
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\color{red}\\sout]{\\%DIF\\ <\\ }, %DIF PREAMBLE\n  moredelim=[il][",
+    "start": 708,
+    "end": 770,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\color{blue}\\uwave]{\\%DIF\\ >\\ } %DIF PREAMBLE\n",
+    "start": 770,
+    "end": 816,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\DIFdel{Old }",
+    "start": 862,
+    "end": 875,
+    "style": {
+      "color": "#ff0000",
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\DIFadd{New }",
+    "start": 899,
+    "end": 912,
+    "style": {
+      "color": "#0000ff",
+      "deco": "underline wavy"
+    }
+  }
+]

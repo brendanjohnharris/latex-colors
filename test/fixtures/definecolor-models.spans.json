@@ -1,0 +1,50 @@
+[
+  {
+    "text": "\\textcolor{c1}{one}",
+    "start": 190,
+    "end": 209,
+    "style": {
+      "color": "#ff8000"
+    }
+  },
+  {
+    "text": "\\textcolor{c2}{two}",
+    "start": 210,
+    "end": 229,
+    "style": {
+      "color": "#0080ff"
+    }
+  },
+  {
+    "text": "\\textcolor{c3}{three}",
+    "start": 230,
+    "end": 251,
+    "style": {
+      "color": "#6ea0f9"
+    }
+  },
+  {
+    "text": "\\textcolor{c4}{four}",
+    "start": 252,
+    "end": 272,
+    "style": {
+      "color": "#4d1900"
+    }
+  },
+  {
+    "text": "\\textcolor{c5}{five}",
+    "start": 273,
+    "end": 293,
+    "style": {
+      "color": "#ff00ff"
+    }
+  },
+  {
+    "text": "\\textcolor{c6}{six}",
+    "start": 294,
+    "end": 313,
+    "style": {
+      "color": "#4d4d4d"
+    }
+  }
+]

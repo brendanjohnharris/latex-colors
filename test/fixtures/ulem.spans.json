@@ -1,0 +1,34 @@
+[
+  {
+    "text": "\\del{struck}",
+    "start": 129,
+    "end": 141,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\wav{wavy}",
+    "start": 142,
+    "end": 152,
+    "style": {
+      "deco": "underline wavy"
+    }
+  },
+  {
+    "text": "\\und{underlined}",
+    "start": 153,
+    "end": 169,
+    "style": {
+      "deco": "underline"
+    }
+  },
+  {
+    "text": "\\xo{crossed}",
+    "start": 170,
+    "end": 182,
+    "style": {
+      "deco": "line-through"
+    }
+  }
+]

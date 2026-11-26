@@ -1,7 +1,12 @@
-check.js
-ROADMAP.md
-*.vsix
-.gitignore
 .github/**
+.vscode-test/**
+.superpowers/**
+.claude/**
 test/**
+scripts/**
 PLAN.md
+ROADMAP.md
+jsconfig.json
+package-lock.json
+.gitignore
+*.vsix

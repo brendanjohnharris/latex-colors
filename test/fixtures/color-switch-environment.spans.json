@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\\color{red} quoted text\n",
+    "start": 14,
+    "end": 38,
+    "style": {
+      "color": "#ff0000"
+    }
+  }
+]

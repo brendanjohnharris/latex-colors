@@ -1,6 +1,7 @@
+// @ts-check
 'use strict';
 const vscode = require('vscode');
-const { scan } = require('./colors');
+const { scan, hex } = require('./colors');
 const { marks, MARKS } = require('./marks');
 
 const types = new Map(); // style key -> decoration type
@@ -8,7 +9,6 @@ const markTypes = new Map(); // mark kind -> decoration type
 const timers = new Map();
 
 const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
 function dark() {
     const k = vscode.window.activeColorTheme.kind;
