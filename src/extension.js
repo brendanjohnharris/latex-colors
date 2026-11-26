@@ -1,12 +1,23 @@
 // @ts-check
 'use strict';
+const path = require('node:path');
 const vscode = require('vscode');
 const { scan, hex } = require('./colors');
 const { marks, MARKS } = require('./marks');
+const { preambleOf, findCandidates, runProbe, toProbed, cacheKey, serialize } = require('./probe');
+const { resolveEngine } = require('./engine');
+const { findOnPath, readLatexmkrc, compileProbe, probeArgs } = require('./probeRunner');
 
 const types = new Map(); // style key -> decoration type
 const markTypes = new Map(); // mark kind -> decoration type
-const timers = new Map();
+const timers = new Map(), saveTimers = new Map();
+const probed = new Map(); // document uri -> probe colors
+const CACHE_SIZE = 20, CACHE_STATE = 'latexColors.probeCache';
+let cache = new Map(); // cacheKey -> probe colors, oldest first; mirrored in workspaceState
+let state, out;
+
+const config = (uri = undefined) => vscode.workspace.getConfiguration('latexColors', uri);
+const log = msg => out.appendLine(`[${new Date().toLocaleTimeString()}] ${msg}`);
 
 const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 
@@ -52,7 +63,7 @@ function refresh(editor) {
     const range = s => new vscode.Range(doc.positionAt(s.start), doc.positionAt(s.end));
     if (isTex(doc)) {
         const ranges = new Map();
-        for (const s of scan(text)) {
+        for (const s of scan(text, config(doc.uri).get('probe.enabled') ? probed.get(doc.uri.toString()) : undefined)) {
             const t = typeFor(s.style);
             if (!ranges.has(t)) ranges.set(t, []);
             ranges.get(t).push(range(s));
@@ -71,9 +82,75 @@ function resetTypes() {
     refreshAll();
 }
 
+function remember(key, value) {
+    cache.delete(key);
+    cache.set(key, value);
+    while (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value);
+    state.update(CACHE_STATE, [...cache]);
+}
+
+function report(list, r, ms) {
+    const n = status => r.results.filter(x => x.status === status).length;
+    log(`  ${r.runs} run(s), ${ms} ms: ${n('ok')} ok, ${n('neutral')} neutral, ${n('failed')} failed, ${n('undefined')} undefined`);
+    if (r.error) return log(`  preamble: ${r.error}`);
+    list.forEach((c, k) => {
+        const x = r.results[k], what = c.kind === 'macro' ? '\\' + c.name : c.expr;
+        if (x.status === 'failed') log(`  failed ${what}: ${x.error}`);
+        else if (x.status === 'undefined') log(`  undefined color ${what}`);
+    });
+}
+
+// Ask LaTeX for the colors of the commands and expressions in a root file (PLAN 2.8); cached by preamble and candidates.
+async function probe(doc) {
+    const cfg = config(doc.uri);
+    if (!cfg.get('probe.enabled') || !vscode.workspace.isTrusted || doc.uri.scheme !== 'file' || doc.isClosed) return;
+    const text = doc.getText(), preamble = preambleOf(text);
+    if (preamble === null) return; // not a root file
+    const root = path.dirname(doc.uri.fsPath), name = path.basename(doc.uri.fsPath), { list, truncated } = findCandidates(text);
+    const lwc = vscode.workspace.getConfiguration('latex-workshop', doc.uri); // LaTeX Workshop's activate returns no API
+    const lw = vscode.extensions.getExtension('James-Yu.latex-workshop') ? {
+        enableMagicComments: lwc.get('latex.build.enableMagicComments', true), recipeDefault: lwc.get('latex.recipe.default', 'first'),
+        recipes: lwc.get('latex.recipes', []), tools: lwc.get('latex.tools', []), magicArgs: lwc.get('latex.magic.args', []),
+    } : null;
+    const paths = {};
+    const { engine, reason } = resolveEngine({ override: cfg.get('probe.engine', ''), rootText: text, lw, rcTexts: readLatexmkrc(root),
+        onPath: n => !!(paths[n] = findOnPath(n)) });
+    if (!engine) return log(`${name}: probe skipped: ${reason}`);
+    const key = cacheKey(engine, preamble, list);
+    if (!cache.has(key)) {
+        log(`${name}: ${engine} (${reason}), ${list.length} candidates${truncated ? ` (${truncated} over the limit dropped)` : ''}`);
+        log(`  ${paths[engine]} ${probeArgs('<tmp>').join(' ')} in ${root}`);
+        const t0 = Date.now();
+        const r = await runProbe(preamble, list, tex => compileProbe({ engine: paths[engine], cwd: root, tex, timeout: cfg.get('probe.timeout', 30) }));
+        report(list, r, Date.now() - t0);
+        if (r.error) return; // retried on the next save
+        remember(key, toProbed(list, r.results));
+    }
+    probed.set(doc.uri.toString(), cache.get(key));
+    vscode.window.visibleTextEditors.filter(e => e.document === doc).forEach(refresh);
+}
+
+const runProbeFor = serialize((_uri, doc) => probe(doc).catch(e => log(`${path.basename(doc.uri.fsPath)}: probe failed: ${e.message}`)));
+const probeDoc = doc => isTex(doc) && runProbeFor(doc.uri.toString(), doc);
+const probeVisible = () => vscode.window.visibleTextEditors.forEach(e => probeDoc(e.document));
+
 function activate(context) {
+    state = context.workspaceState;
+    cache = new Map(state.get(CACHE_STATE, []));
+    out = vscode.window.createOutputChannel('LaTeX Colors');
     context.subscriptions.push(
-        vscode.window.onDidChangeVisibleTextEditors(refreshAll),
+        out,
+        vscode.window.onDidChangeVisibleTextEditors(editors => {
+            refreshAll();
+            editors.filter(e => !probed.has(e.document.uri.toString())).forEach(e => probeDoc(e.document)); // cached results apply at once
+        }),
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            if (!isTex(doc)) return;
+            clearTimeout(saveTimers.get(doc));
+            saveTimers.set(doc, setTimeout(() => probeDoc(doc), 1000));
+        }),
+        vscode.workspace.onDidCloseTextDocument(doc => probed.delete(doc.uri.toString())),
+        vscode.workspace.onDidGrantWorkspaceTrust(probeVisible),
         vscode.workspace.onDidChangeTextDocument(e => {
             if (!hasMarks(e.document)) return;
             clearTimeout(timers.get(e.document));
@@ -81,10 +158,15 @@ function activate(context) {
                 vscode.window.visibleTextEditors.filter(ed => ed.document === e.document).forEach(refresh), 250));
         }),
         vscode.window.onDidChangeActiveColorTheme(resetTypes),
-        vscode.workspace.onDidChangeConfiguration(e => e.affectsConfiguration('latexColors') && resetTypes()),
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (!e.affectsConfiguration('latexColors')) return;
+            resetTypes();
+            if (e.affectsConfiguration('latexColors.probe')) probeVisible();
+        }),
         { dispose: () => [...types.values(), ...markTypes.values()].forEach(t => t.dispose()) },
     );
     refreshAll();
+    probeVisible();
 }
 
 module.exports = { activate, deactivate() {} };

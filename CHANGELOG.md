@@ -2,6 +2,15 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.4.0 - 2026-11-27
+
+### Added
+- Probe compile: after each save of a root file, LaTeX reports the exact color of each command and color expression in the document, and those colors replace the predictions. The engine is chosen as LaTeX Workshop would choose it. Settings `latexColors.probe.enabled` (default `true`), `latexColors.probe.engine` and `latexColors.probe.timeout`; output channel **LaTeX Colors**.
+- Untrusted workspaces are supported with the probe off.
+
+### Fixed
+- A color or macro named after an `Object` property (`\textcolor{constructor}{...}`) no longer breaks coloring.
+
 ## 0.3.0 - 2026-11-27
 
 ### Fixed

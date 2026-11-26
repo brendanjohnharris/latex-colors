@@ -10,6 +10,14 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
+      - uses: TeX-Live/setup-texlive-action@v4 # pdflatex for test/probe.integration.test.js
+        with:
+          packages: |
+            scheme-basic
+            xcolor
+            infwarerr
+            soul
+            ulem
       - run: npm ci
       - run: npm test
       - run: npm run typecheck

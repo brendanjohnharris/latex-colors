@@ -1,0 +1,26 @@
+\documentclass{article}
+
+\makeatletter\@ifpackageloaded{xcolor}{}{\RequirePackage{xcolor}}\makeatother
+\begin{document}
+\makeatletter
+\def\lc@emit#1#2{\extractcolorspecs{#2}\lc@m\lc@s\convertcolorspec\lc@m\lc@s{rgb}\lc@rgb\typeout{LCRESULT #1=\lc@rgb}}
+\newcommand\lcreport[1]{\lc@emit{#1}{.}}
+\newcommand\lcbegin[1]{\typeout{LCBEGIN #1}}
+\newcommand\lcend[1]{\setbox0\vbox{\leavevmode\par}\typeout{LCEND #1}}
+\newcommand\lcexpr[3]{\let\lc@ok\@firstoftwo
+  \@for\lc@n:=#3\do{\expandafter\@ifundefinedcolor\expandafter{\lc@n}{\let\lc@ok\@secondoftwo}{}}%
+  \lc@ok{\begingroup\colorlet{lc@tmp}{#2}\lc@emit{#1}{lc@tmp}\endgroup}{\typeout{LCRESULT #1=undefined}}}
+\makeatother
+\lcbegin{0}\lcreport{0}\lcend{0}
+
+\lcbegin{1}\setbox0\hbox{\ben{\lcreport{1}}}\lcend{1}
+
+\lcbegin{2}\lcexpr{2}{green!50!black}{green,black}\lcend{2}
+
+\lcbegin{3}\setbox0\hbox{\textbf{\lcreport{3}}}\lcend{3}
+
+\lcbegin{4}\lcexpr{4}{Maroon}{Maroon}\lcend{4}
+
+\lcbegin{5}\setbox0\hbox{\hl{\lcreport{5}}}\lcend{5}
+
+\end{document}

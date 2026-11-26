@@ -3,12 +3,12 @@
 // Pure functions (no vscode import), so tests run them under plain node.
 'use strict';
 
-const BASE = { // xcolor.sty base set, rgb
+const BASE = Object.assign(Object.create(null), { // xcolor.sty base set, rgb; no prototype, so \textcolor{constructor} is unknown
     red: [1, 0, 0], green: [0, 1, 0], blue: [0, 0, 1], brown: [.75, .5, .25], lime: [.75, 1, 0],
     orange: [1, .5, 0], pink: [1, .75, .75], purple: [.75, 0, .25], teal: [0, .5, .5], violet: [.5, 0, .5],
     cyan: [0, 1, 1], magenta: [1, 0, 1], yellow: [1, 1, 0], olive: [.5, .5, 0], black: [0, 0, 0],
     darkgray: [.25, .25, .25], gray: [.5, .5, .5], lightgray: [.75, .75, .75], white: [1, 1, 1],
-};
+});
 const HL_DEFAULT = [1, 1, 0]; // soul's \hl without \sethlcolor
 
 const escaped = (t, i) => { let n = 0; while (i - 1 - n >= 0 && t[i - 1 - n] === '\\') n++; return n % 2 === 1; };
@@ -107,7 +107,7 @@ function bodyStyle(body, table) {
 
 // Colours and one-argument styling macros defined in the document, in order.
 function definitions(code) {
-    const table = { ...BASE }, macros = {};
+    const table = Object.assign(Object.create(null), BASE), macros = Object.create(null);
     CMD.lastIndex = 0;
     for (let m; (m = CMD.exec(code));) {
         if (escaped(code, m.index)) continue;
@@ -143,23 +143,27 @@ function switchEnd(t, i) {
     return t.length;
 }
 
-// Raw spans: {start, end, style}; style.color / style.bg are rgb triples in [0, 1].
-function spans(text) {
+const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
+
+// Raw spans: {start, end, style}; style.color / style.bg are rgb triples in [0, 1]. probed (from the
+// probe compile) gives exact colors by macro name and by expression; spans still come from the parser.
+function spans(text, probed = undefined) {
     const code = stripComments(text), { table, macros } = definitions(code), out = [];
+    const colorFor = (model, spec) => (!model && own(probed?.exprs, spec.trim())) || colorOf(model, spec, table);
     CMD.lastIndex = 0;
     for (let m; (m = CMD.exec(code));) {
         if (escaped(code, m.index)) continue;
         const name = m[1], i = CMD.lastIndex;
         if (name === 'textcolor' || name === 'colorbox') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end);
-            const v = b && colorOf(o.inner, a.inner, table);
+            const v = b && colorFor(o.inner, a.inner);
             if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v } : { bg: v } });
         } else if (name === 'color') {
-            const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorOf(o.inner, a.inner, table);
+            const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorFor(o.inner, a.inner);
             if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v } });
-        } else if (macros[name]) {
-            const a = readArg(code, i);
-            if (a) out.push({ start: m.index, end: a.end, style: macros[name] });
+        } else if (macros[name] || own(probed?.macros, name)) {
+            const a = readArg(code, i), p = own(probed?.macros, name);
+            if (a) out.push({ start: m.index, end: a.end, style: p ? { ...macros[name], color: p } : macros[name] });
         }
     }
     return out;
@@ -180,7 +184,7 @@ function flatten(raw) {
     return out;
 }
 
-const scan = text => flatten(spans(text));
+const scan = (text, probed = undefined) => flatten(spans(text, probed));
 const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
-module.exports = { scan, spans, definitions, parseExpr, parseSpec, stripComments, hex, BASE };
+module.exports = { scan, spans, definitions, parseExpr, parseSpec, stripComments, readArg, readOpt, hex, BASE };

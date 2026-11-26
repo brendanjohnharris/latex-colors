@@ -2,11 +2,21 @@
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
     "description": "Colors LaTeX source the way xcolor colors the PDF (\\textcolor, \\color, \\colorbox, and one-argument macros built on them or on soul and ulem), and highlights editorial marks ([[rewrite]], xxrephrasexx, ((note)), ....expand....) in LaTeX, Markdown and plain text.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "publisher": "local",
     "license": "MIT",
     "engines": {
         "vscode": "^1.145.0"
+    },
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": "limited",
+            "description": "The probe compile, which runs the document's preamble, is off in untrusted workspaces.",
+            "restrictedConfigurations": [
+                "latexColors.probe.enabled",
+                "latexColors.probe.engine"
+            ]
+        }
     },
     "activationEvents": [
         "onLanguage:latex",
@@ -28,6 +38,40 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand....."
+                },
+                "latexColors.probe.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "After each save, compile the preamble with a generated body (shell escape off, in a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces."
+                },
+                "latexColors.probe.engine": {
+                    "type": "string",
+                    "default": "",
+                    "enum": [
+                        "",
+                        "pdflatex",
+                        "lualatex",
+                        "xelatex",
+                        "latex",
+                        "platex",
+                        "uplatex"
+                    ],
+                    "enumDescriptions": [
+                        "Automatic: as LaTeX Workshop would compile the root file, else a % !TEX program magic comment, else pdflatex.",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        ""
+                    ],
+                    "description": "TeX engine for the probe compile."
+                },
+                "latexColors.probe.timeout": {
+                    "type": "number",
+                    "default": 30,
+                    "minimum": 1,
+                    "description": "Seconds before a probe compile is stopped."
                 }
             }
         }

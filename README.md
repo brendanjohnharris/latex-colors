@@ -11,6 +11,14 @@ A VS Code extension that colors LaTeX source the way xcolor colors the PDF, and 
 
 Braces are matched to any depth; `%` comments and escaped `\{`, `\}`, `\%` are skipped. Where colored spans nest, the inner one wins.
 
+## Exact colors from LaTeX
+
+The colors above are predicted from the source on every keystroke. After each save of a root file (one with `\begin{document}`), a probe compile asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors from `\input` files, `dvipsnames` and other name sets, xparse and `\def` macros, and package commands are exact. Extents, highlights and strikethroughs still come from the parser.
+
+- The engine is the one LaTeX Workshop would use (magic comments, the default recipe, latexmk flags and `latexmkrc`), else a `% !TEX program` magic comment, else `pdflatex`; `latexColors.probe.engine` overrides it. The engine must be on `PATH`.
+- The probe runs the preamble's code, as compiling the document does, with shell escape off, from the root's folder, writing only to a temporary directory that is deleted afterwards, and is stopped after `latexColors.probe.timeout` seconds. The probe does not run in untrusted workspaces.
+- Results are cached by engine, preamble and the set of commands, so reopening a file does not recompile. The **LaTeX Colors** output channel lists each run: engine, command line, time, and every command that failed or color that is undefined.
+
 ## Editorial marks
 
 | Mark | Meaning | Color |
@@ -26,6 +34,9 @@ Braces are matched to any depth; `%` comments and escaped `\{`, `\}`, `\%` are s
 |---|---|---|
 | `latexColors.marks.enabled` | `true` | Highlight editorial marks |
 | `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read |
+| `latexColors.probe.enabled` | `true` | Run the probe compile after each save |
+| `latexColors.probe.engine` | `""` | Engine for the probe; empty chooses as above |
+| `latexColors.probe.timeout` | `30` | Seconds before a probe compile is stopped |
 
 Requires VS Code 1.145 or later.
 
@@ -50,6 +61,6 @@ See [ROADMAP.md](ROADMAP.md) for the path to a Marketplace release.
 
 ## Limitations
 
-- Only the open document is read, so colors defined in an `\input` preamble are missed.
-- The `dvipsnames`, `svgnames` and `x11names` sets are not known.
-- `\def`, xparse commands and multi-argument macros are not interpreted.
+- Only the open document is parsed, and only a root file is probed, so a file pulled in with `\input` gets predictions from its own text.
+- Without the probe (no TeX engine, an untrusted workspace, before the first save), the `dvipsnames`, `svgnames` and `x11names` sets, `\def` and xparse macros are not known.
+- Multi-argument macros color from the command to the end of the first argument.

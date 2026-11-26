@@ -37,3 +37,29 @@ test('\\sethlcolor via \\colorlet mix', () => assert.strictEqual(rgb(at('lit').s
 // xcolor.sty v3.02, \XC@cnv@cmyk@cmy and \XC@calcT: cmy = min(1, cmy + k), then rgb = 1 - cmy.
 test('cmyk converts as xcolor does', () =>
     assert.deepStrictEqual(parseSpec('cmyk', '0.25,0,0.75,0.5').map(x => +x.toFixed(6)), [0.25, 0.5, 0]));
+test('names that are Object.prototype keys are unknown colors and macros', () =>
+    assert.deepStrictEqual(scan('\\textcolor{constructor}{a} \\color{__proto__} \\toString{b} \\hasOwnProperty{c}'), []));
+
+// Merging probe results (PLAN 2.7).
+const PDOC = String.raw`\definecolor{myorange}{RGB}{255,102,51}
+\providecommand{\bencut}[1]{\textcolor{red}{\sout{#1}}}
+\providecommand{\ben}[1]{\textcolor{myorange}{#1}}
+\bencut{a} \todo{b} \textcolor{Maroon}{c} {\color{ Maroon }d} \colorbox{Maroon}{e} \ben{f} \textcolor[rgb]{0,0,1}{Maroon} \constructor{h}`;
+const PROBED = JSON.parse('{"macros":{"bencut":[0.5,0,0],"todo":[0,0,1]},"exprs":{"Maroon":[0.68,0,0.17]}}');
+const pseg = scan(PDOC, PROBED);
+const pat = s => pseg.find(x => x.start <= PDOC.lastIndexOf(s) && x.end >= PDOC.lastIndexOf(s) + s.length);
+
+test('probe color replaces the predicted color; decoration stays', () =>
+    assert.deepStrictEqual(pat('{a}').style, { color: [0.5, 0, 0], deco: 'line-through' }));
+test('macro unknown to the parser, colored by the probe: command through first argument', () => {
+    const s = pat('\\todo{b}');
+    assert.deepStrictEqual([PDOC.slice(s.start, s.end), s.style], ['\\todo{b}', { color: [0, 0, 1] }]);
+});
+test('probed expressions in \\textcolor, \\color (trimmed) and \\colorbox', () => {
+    assert.deepStrictEqual(pat('{c}').style, { color: [0.68, 0, 0.17] });
+    assert.deepStrictEqual(pat('Maroon }d').style, { color: [0.68, 0, 0.17] });
+    assert.deepStrictEqual(pat('{e}').style, { bg: [0.68, 0, 0.17] });
+});
+test('macros without a probe result keep the prediction', () => assert.strictEqual(rgb(pat('{f}').style.color), '255,102,51'));
+test('an explicit model is never looked up', () => assert.strictEqual(rgb(pat('{Maroon}').style.color), '0,0,255'));
+test('probe results parsed from JSON ignore prototype keys', () => assert.ok(!pat('{h}')));
