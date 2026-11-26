@@ -2,6 +2,18 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.5.0 - 2026-11-27
+
+### Added
+- Multi-file documents: definitions from the root file and the local files it pulls in (`\input`, `\include`, `\subfile`, `\import`, local `.sty` packages); the root from `% !TEX root`, the `subfiles` class, or the workspace file that includes the open one. The probe compiles the root and covers commands used in every file.
+- The `dvipsnames`, `svgnames` and `x11names` color sets, generated from TeX Live 2026 (`scripts/gen-names.js`); models `hsb`, `Hsb`, `HSB` and `named`; `\definecolorset`.
+- Macros from xparse (`\NewDocumentCommand` and relatives), `\def` and `\let`; macros built on other macros; multi-argument macros color through the argument their body styles; environments from `\newenvironment` whose begin code sets a color; ulem's `\dashuline` and `\dotuline`.
+- `\verb` and the verbatim, `Verbatim`, `lstlisting`, `minted` and `comment` environments are skipped.
+
+### Fixed
+- A `\color` switch inside an environment runs to the environment's own `\end`, not to the first nested `\end`; `\endcsname` no longer ends it.
+- A `\color` switch in a group that is not yet closed stops at the next blank line instead of running to the end of the document.
+
 ## 0.4.0 - 2026-11-27
 
 ### Added

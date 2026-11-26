@@ -1,0 +1,18 @@
+[
+  {
+    "text": "\\dsh{dashed}",
+    "start": 69,
+    "end": 81,
+    "style": {
+      "deco": "underline dashed"
+    }
+  },
+  {
+    "text": "\\dtt{dotted}",
+    "start": 82,
+    "end": 94,
+    "style": {
+      "deco": "underline dotted"
+    }
+  }
+]

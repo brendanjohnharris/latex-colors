@@ -1,0 +1,6 @@
+\newenvironment{redbox}{\color{red}}{}
+\newenvironment{plain}{\centering}{}
+\begin{redbox}
+outer \begin{redbox} inner \end{redbox} outer again
+\end{redbox}
+\begin{plain} not colored \end{plain}

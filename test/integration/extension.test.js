@@ -52,6 +52,12 @@ suite('LaTeX Colors in VS Code', () => {
         assert.ok((await spansWhen(s => s.some(x => x.mark))).some(x => x.mark));
     });
 
+    test('a chapter gets the macros its root pulls in', async () => {
+        await show(path.join(FIXTURES, 'multi', 'chapters', 'one.tex'));
+        const s = await spansWhen(x => x.length > 0);
+        assert.deepStrictEqual(s, [{ text: "\\ben{from the root's macros}", start: 0, end: 28, style: { color: '#6ea0f9' } }]);
+    });
+
     test('probe colors replace predictions, on open and after a save', async function () {
         if (!findOnPath('pdflatex') && !process.env.CI) this.skip();
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-vscode-'));
@@ -68,6 +74,24 @@ suite('LaTeX Colors in VS Code', () => {
             await editor.document.save();
             s = await spansWhen(x => at(x, '\\textcolor{Peach}{b}'), 60000);
             assert.deepStrictEqual(at(s, '\\textcolor{Peach}{b}')?.style, { color: hex(parseSpec('cmyk', '0,0.50,0.70,0')) });
+        } finally {
+            await set('probe.enabled', false);
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('the probe of the root colors a chapter', async function () {
+        if (!findOnPath('pdflatex') && !process.env.CI) this.skip();
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-vscode-'));
+        try {
+            fs.writeFileSync(path.join(dir, 'main.tex'), '\\documentclass{article}\n\\usepackage{xcolor}\n\\newcommand\\tone{teal}\n' +
+                '\\newcommand\\pk[1]{\\textcolor{\\tone}{#1}}\n\\begin{document}\n\\input{ch}\n\\end{document}\n');
+            fs.writeFileSync(path.join(dir, 'ch.tex'), '% !TEX root = main.tex\n\\pk{x}\n');
+            await set('probe.enabled', true);
+            await show(path.join(dir, 'ch.tex'));
+            const s = await spansWhen(x => at(x, '\\pk{x}'), 60000); // the parser cannot expand \tone; the probe can
+            assert.deepStrictEqual(at(s, '\\pk{x}')?.style, { color: '#008080' });
         } finally {
             await set('probe.enabled', false);
             await vscode.commands.executeCommand('workbench.action.closeAllEditors');

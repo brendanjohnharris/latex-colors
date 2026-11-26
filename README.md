@@ -5,15 +5,17 @@ A VS Code extension that colors LaTeX source the way xcolor colors the PDF, and 
 ## Colors
 
 - `\textcolor{c}{...}`, `{\color{c} ...}` (to the end of the group or environment) and `\colorbox{c}{...}`.
-- One-argument macros defined with `\newcommand`, `\renewcommand`, `\providecommand` or `\DeclareRobustCommand` whose body uses those commands, soul's `\hl` (with `\sethlcolor`), or `\sout`, `\uwave` and `\uline`. A comment macro such as `\providecommand{\ben}[1]{\textcolor{myorange}{[#1]}}` colors every `\ben{...}`.
-- Colors: xcolor's base names, and every `\definecolor`, `\providecolor` and `\colorlet` in the document (models `rgb`, `RGB`, `HTML`, `cmyk`, `cmy`, `gray`), including expressions such as `red!50!blue`.
+- Macros defined with `\newcommand`, `\renewcommand`, `\providecommand`, `\DeclareRobustCommand`, xparse's `\NewDocumentCommand` and relatives (argument types `m`, `o`, `O{...}`, `s`, `t`), `\def` (undelimited parameters) or `\let`, whose body uses those commands, soul's `\hl` (with `\sethlcolor`), ulem's `\sout`, `\uwave`, `\uline`, `\dashuline` and `\dotuline`, or another such macro. A comment macro such as `\providecommand{\ben}[1]{\textcolor{myorange}{[#1]}}` colors every `\ben{...}`; a macro with several arguments colors through the argument its body styles.
+- Environments defined with `\newenvironment` whose begin code sets a color.
+- Colors: xcolor's base names; the `dvipsnames`, `svgnames` and `x11names` sets when xcolor is loaded with those options (in `\usepackage`, `\PassOptionsToPackage` or `\documentclass`); and every `\definecolor`, `\providecolor`, `\colorlet` and `\definecolorset` (models `rgb`, `RGB`, `HTML`, `cmyk`, `cmy`, `gray`, `hsb`, `Hsb`, `HSB`, `named`), including expressions such as `red!50!blue`.
 - latexdiff output: `\DIFadd` and `\DIFdel` are defined in the diff's preamble, so they color like any other macro.
+- Multi-file documents: definitions are read from the root file and every local file it pulls in (`\input`, `\include`, `\subfile`, `\import`, and `\usepackage` of a `.sty` in the root's folder). The root is found from a `% !TEX root` magic comment, the `subfiles` class option, `\documentclass` in the file itself, or the workspace file that pulls the file in.
 
-Braces are matched to any depth; `%` comments and escaped `\{`, `\}`, `\%` are skipped. Where colored spans nest, the inner one wins.
+Braces are matched to any depth; `%` comments, `\verb` and the verbatim, `Verbatim`, `lstlisting`, `minted` and `comment` environments are skipped. Where colored spans nest, the inner one wins.
 
 ## Exact colors from LaTeX
 
-The colors above are predicted from the source on every keystroke. After each save of a root file (one with `\begin{document}`), a probe compile asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors from `\input` files, `dvipsnames` and other name sets, xparse and `\def` macros, and package commands are exact. Extents, highlights and strikethroughs still come from the parser.
+The colors above are predicted from the source on every keystroke. After each save, a probe compile of the document's root file asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors computed by macros, package commands (`todonotes`, `changes`) and any xcolor expression are exact. Extents, highlights and strikethroughs still come from the parser.
 
 - The engine is the one LaTeX Workshop would use (magic comments, the default recipe, latexmk flags and `latexmkrc`), else a `% !TEX program` magic comment, else `pdflatex`; `latexColors.probe.engine` overrides it. The engine must be on `PATH`.
 - The probe runs the preamble's code, as compiling the document does, with shell escape off, from the root's folder, writing only to a temporary directory that is deleted afterwards, and is stopped after `latexColors.probe.timeout` seconds. The probe does not run in untrusted workspaces.
@@ -62,6 +64,5 @@ See [ROADMAP.md](ROADMAP.md) for the path to a Marketplace release.
 
 ## Limitations
 
-- Only the open document is parsed, and only a root file is probed, so a file pulled in with `\input` gets predictions from its own text.
-- Without the probe (no TeX engine, an untrusted workspace, before the first save), the `dvipsnames`, `svgnames` and `x11names` sets, `\def` and xparse macros are not known.
-- Multi-argument macros color from the command to the end of the first argument.
+- A file is read for definitions only when its root pulls it in with a literal path; `\input{\dir/file}` is not followed.
+- Without the probe (no TeX engine, an untrusted workspace, before the first save), macros whose color comes from code the parser does not model, such as `\textcolor{\mycolor}{...}` or a package's own commands, are not colored.

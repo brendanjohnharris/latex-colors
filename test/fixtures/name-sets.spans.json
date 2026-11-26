@@ -1,0 +1,34 @@
+[
+  {
+    "text": "\\textcolor{Maroon}{dvips}",
+    "start": 117,
+    "end": 142,
+    "style": {
+      "color": "#ad0000"
+    }
+  },
+  {
+    "text": "\\textcolor{AliceBlue}{svg}",
+    "start": 143,
+    "end": 169,
+    "style": {
+      "color": "#f0f8ff"
+    }
+  },
+  {
+    "text": "\\textcolor{AntiqueWhite4}{x11}",
+    "start": 170,
+    "end": 200,
+    "style": {
+      "color": "#8b8378"
+    }
+  },
+  {
+    "text": "\\textcolor{Maroon!50!AliceBlue}{mixed}",
+    "start": 201,
+    "end": 239,
+    "style": {
+      "color": "#cf7c80"
+    }
+  }
+]

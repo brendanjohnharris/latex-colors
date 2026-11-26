@@ -10,14 +10,31 @@ const BASE = Object.assign(Object.create(null), { // xcolor.sty base set, rgb; n
     darkgray: [.25, .25, .25], gray: [.5, .5, .5], lightgray: [.75, .75, .75], white: [1, 1, 1],
 });
 const HL_DEFAULT = [1, 1, 0]; // soul's \hl without \sethlcolor
+const NAMES = require('./names.json'); // scripts/gen-names.js
 
 const escaped = (t, i) => { let n = 0; while (i - 1 - n >= 0 && t[i - 1 - n] === '\\') n++; return n % 2 === 1; };
 
-// Blank out % comments, keeping offsets.
-function stripComments(t) {
+const VERBATIM = /\\begin\s*\{(verbatim\*?|Verbatim\*?|lstlisting|minted|comment)\}/y;
+
+// Blank out what TeX does not read as commands, keeping offsets: % comments, \verb<d>...<d>, and the
+// bodies of verbatim-like environments.
+function mask(t) {
     const c = t.split('');
-    for (let i = 0; i < c.length; i++)
-        if (c[i] === '%' && !escaped(t, i)) while (i < c.length && c[i] !== '\n') c[i++] = ' ';
+    const blank = (a, b) => { for (let k = a; k < b; k++) if (c[k] !== '\n') c[k] = ' '; };
+    for (let i = 0; i < t.length; i++) {
+        if ((t[i] !== '%' && t[i] !== '\\') || escaped(t, i)) continue;
+        const eol = (j => j < 0 ? t.length : j)(t.indexOf('\n', i));
+        if (t[i] === '%') { blank(i, eol); i = eol; continue; }
+        let m;
+        if (t.startsWith('\\verb', i) && !/[A-Za-z]/.test(t[i + 5] || 'a')) {
+            const d = i + (t[i + 5] === '*' ? 6 : 5), close = t.indexOf(t[d], d + 1); // delimiter: any character
+            const end = close < 0 || close > eol ? eol : close + 1;
+            blank(i, end); i = end - 1;
+        } else if ((VERBATIM.lastIndex = i, m = VERBATIM.exec(t))) {
+            const end = (j => j < 0 ? t.length : j)(t.indexOf(`\\end{${m[1]}}`, i + m[0].length));
+            blank(i + m[0].length, end); i = end - 1;
+        }
+    }
     return c.join('');
 }
 
@@ -52,6 +69,12 @@ function readOpt(t, i) { // [...], brace-aware
     return { inner: null, end: i };
 }
 
+// xcolor.sty \XC@cnv@hsb@rgb: piecewise by sixths of the hue, the fraction complemented in even sixths.
+function hsb(h, s, b) {
+    const x = 6 * h, i = Math.min(6, Math.max(0, Math.floor(x))), f = i % 2 ? x - i : 1 - (x - i);
+    return [[0, f, 1], [f, 0, 1], [1, 0, f], [1, f, 0], [f, 1, 0], [0, 1, f], [0, f, 1]][i].map(y => b * (1 - s * y));
+}
+
 function parseSpec(model, spec) {
     model = model.split('/')[0].trim(); spec = spec.split('/')[0].trim();
     const v = spec.split(',').map(Number);
@@ -63,6 +86,9 @@ function parseSpec(model, spec) {
         case 'cmyk': return ok(v, 4) ? [0, 1, 2].map(k => 1 - Math.min(1, v[k] + v[3])) : null; // xcolor.sty \XC@cnv@cmyk@cmy
         case 'cmy': return ok(v, 3) ? v.map(x => 1 - x) : null;
         case 'gray': return ok(v, 1) ? [v[0], v[0], v[0]] : null;
+        case 'hsb': return ok(v, 3) ? hsb(v[0], v[1], v[2]) : null;
+        case 'Hsb': return ok(v, 3) ? hsb(v[0] / 360, v[1], v[2]) : null; // \rangeHsb
+        case 'HSB': return ok(v, 3) ? hsb(v[0] / 240, v[1] / 240, v[2] / 240) : null; // \rangeHSB
     }
     return null;
 }
@@ -82,14 +108,23 @@ function parseExpr(expr, table) {
     return neg ? c.map(x => 1 - x) : c;
 }
 
-function colorOf(model, spec, table) { return model ? parseSpec(model, spec) : parseExpr(spec, table); }
+function colorOf(model, spec, table) {
+    if (model?.trim() === 'named') return own(table, spec.trim()) || null;
+    return model ? parseSpec(model, spec) : parseExpr(spec, table);
+}
+
+const XCOLOR_OPTIONS = /\\(?:usepackage|RequirePackage)\s*\[([^\]]*)\]\s*\{[^}]*\bxcolor\b[^}]*\}|\\PassOptionsToPackage\s*\{([^}]*)\}\s*\{[^}]*\bxcolor\b[^}]*\}|\\documentclass\s*\[([^\]]*)\]/g;
 
 const CMD = /\\([A-Za-z@]+)\*?/g;
+const NAME = /\\([A-Za-z@]+)/y;
 const DEFINERS = new Set(['newcommand', 'renewcommand', 'providecommand', 'DeclareRobustCommand']);
+const XPARSE = new Set(['NewDocumentCommand', 'RenewDocumentCommand', 'ProvideDocumentCommand', 'DeclareDocumentCommand']);
+const ARG_STYLERS = new Set(['hl', 'texthl', 'sout', 'st', 'xout', 'uwave', 'uline', 'ul', 'underline', 'dashuline', 'dotuline', 'textbf', 'textit', 'emph']);
 
-// Style implied by a macro body, or null if it changes nothing visible.
-function bodyStyle(body, table) {
+// Style implied by a macro body (with the styles of macros it calls), or null if it changes nothing visible.
+function bodyStyle(body, table, macros) {
     const s = {};
+    for (const m of body.matchAll(CMD)) if (own(macros, m[1])) Object.assign(s, macros[m[1]].style);
     const col = /\\(?:textcolor|color)\s*(?:\[([^\]]*)\])?\s*\{([^{}]*)\}/g;
     for (let m; (m = col.exec(body));) s.color = colorOf(m[1], m[2], table) || s.color;
     const hlc = body.match(/\\sethlcolor\s*\{([^{}]*)\}/);
@@ -98,6 +133,8 @@ function bodyStyle(body, table) {
     if (box) s.bg = colorOf(box[1], box[2], table) || s.bg;
     if (/\\(?:sout|st|xout)\b/.test(body)) s.deco = 'line-through';
     else if (/\\uwave\b/.test(body)) s.deco = 'underline wavy';
+    else if (/\\dashuline\b/.test(body)) s.deco = 'underline dashed';
+    else if (/\\dotuline\b/.test(body)) s.deco = 'underline dotted';
     else if (/\\(?:uline|ul|underline)\b/.test(body)) s.deco = 'underline';
     if (/\\(?:textbf|bfseries)\b/.test(body)) s.bold = true;
     if (/\\(?:textit|emph|itshape)\b/.test(body)) s.italic = true;
@@ -105,68 +142,194 @@ function bodyStyle(body, table) {
     return Object.keys(s).length ? s : null;
 }
 
-// Colours and one-argument styling macros defined in the document, in order.
+// End of a macro's arguments up to spec[target] at a use site; -1 if a mandatory one is missing.
+function argsEnd(t, i, spec, target) {
+    let end = i;
+    for (let k = 0; k <= target; k++) {
+        const a = spec[k];
+        if (a === 'm') { const r = readArg(t, end); if (!r) return -1; end = r.end; }
+        else if (a === 'o') end = readOpt(t, end).end;
+        else { const c = a === 's' ? '*' : a.slice(1), j = skipWs(t, end); if (t.startsWith(c, j)) end = j + c.length; }
+    }
+    return end;
+}
+
+// Parts of a body that a styling command covers: [start, end) pairs.
+function styledRegions(body, macros) {
+    const out = [], arg = r => r && out.push([r.end - r.inner.length - 2, r.end]);
+    for (const m of body.matchAll(CMD)) {
+        const name = m[1], i = m.index + m[0].length;
+        if (name === 'textcolor' || name === 'colorbox') { const o = readOpt(body, i), a = readArg(body, o.end); arg(a && readArg(body, a.end)); }
+        else if (name === 'color') { const a = readArg(body, readOpt(body, i).end); if (a) out.push([a.end, switchEnd(body, a.end)]); }
+        else if (name === 'bfseries' || name === 'itshape') out.push([i, switchEnd(body, i)]);
+        else if (ARG_STYLERS.has(name)) arg(readArg(body, i));
+        else if (own(macros, name)) {
+            const d = macros[name], end = argsEnd(body, i, d.spec, d.target);
+            if (end >= 0) out.push([i, end]);
+        }
+    }
+    return out;
+}
+
+// { style, spec, target } for a definition, or null: target indexes spec, the argument the style reaches.
+function analyze(def, table, macros) {
+    const style = bodyStyle(def.body, table, macros);
+    if (!style) return null;
+    const regions = styledRegions(def.body, macros);
+    let target = -1;
+    for (const m of def.body.matchAll(/#([1-9])/g))
+        if (regions.some(([a, b]) => a <= m.index && m.index < b)) target = Math.max(target, Number(m[1]) - 1);
+    if (target < 0 || target >= def.spec.length) target = def.spec.indexOf('m');
+    return target < 0 ? null : { style, spec: def.spec, target };
+}
+
+// xparse argument specification as m, o, s, t<char>; null for any other kind.
+function xparseSpec(s) {
+    const out = [];
+    for (let i = 0; i < s.length;) {
+        const c = s[i];
+        if (/\s|\+/.test(c)) i++; // + marks a long argument
+        else if (c === 'm' || c === 'o' || c === 's') { out.push(c); i++; }
+        else if (c === 'O') { const a = readArg(s, i + 1); if (!a) return null; out.push('o'); i = a.end; }
+        else if (c === 't' && s[i + 1] && !/\s/.test(s[i + 1])) { out.push('t' + s[i + 1]); i += 2; }
+        else return null;
+    }
+    return out;
+}
+
+// \name or {\name} at i: { name, end }.
+function readName(t, i) {
+    i = skipWs(t, i);
+    if (t[i] === '{') { const a = readArg(t, i), n = a && /^\s*\\([A-Za-z@]+)\s*$/.exec(a.inner); return n ? { name: n[1], end: a.end } : null; }
+    NAME.lastIndex = i;
+    const n = NAME.exec(t);
+    return n ? { name: n[1], end: NAME.lastIndex } : null;
+}
+
+// Colors, styling macros and environments defined in the document. Colors are read in order; macros
+// are resolved to a fixed point afterwards, so a macro may call one defined later.
 function definitions(code) {
-    const table = Object.assign(Object.create(null), BASE), macros = Object.create(null);
+    const table = Object.assign(Object.create(null), BASE), defs = Object.create(null), envs = Object.create(null), options = new Set();
+    for (const m of code.matchAll(XCOLOR_OPTIONS)) for (const o of (m[1] ?? m[2] ?? m[3]).split(',')) options.add(o.trim());
+    for (const o of options) Object.assign(table, own(NAMES.sets, o)); // option order: class, passed, package; the last set wins
+    const envDefs = [];
     CMD.lastIndex = 0;
     for (let m; (m = CMD.exec(code));) {
         if (escaped(code, m.index)) continue;
-        const name = m[1]; let i = CMD.lastIndex;
+        const name = m[1], i = CMD.lastIndex;
         if (name === 'definecolor' || name === 'providecolor') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end), c = b && readArg(code, b.end);
-            if (c) { const v = parseSpec(b.inner, c.inner); if (v && !(name === 'providecolor' && table[a.inner.trim()])) table[a.inner.trim()] = v; }
+            if (c) { const v = colorOf(b.inner, c.inner, table); if (v && !(name === 'providecolor' && table[a.inner.trim()])) table[a.inner.trim()] = v; }
+        } else if (name === 'definecolorset') { // [type]{models}{head}{tail}{name,spec;...}
+            const o = readOpt(code, i), md = readArg(code, o.end), hd = md && readArg(code, md.end), tl = hd && readArg(code, hd.end), b = tl && readArg(code, tl.end);
+            for (const entry of b ? b.inner.split(';') : []) {
+                const k = entry.indexOf(','), v = k > 0 && parseSpec(md.inner, entry.slice(k + 1));
+                if (v) table[hd.inner.trim() + entry.slice(0, k).trim() + tl.inner.trim()] = v;
+            }
         } else if (name === 'colorlet') {
             const o = readOpt(code, i), a = readArg(code, o.end), mo = a && readOpt(code, a.end), b = a && readArg(code, mo.end);
             if (b) { const v = parseExpr(b.inner, table); if (v) table[a.inner.trim()] = v; }
-        } else if (DEFINERS.has(name)) {
-            i = skipWs(code, i);
-            let target;
-            if (code[i] === '{') { const a = readArg(code, i); if (!a) continue; target = a.inner.trim(); i = a.end; }
-            else { const t = /^\\([A-Za-z@]+)/.exec(code.slice(i)); if (!t) continue; target = t[0]; i += t[0].length; }
-            const n = readOpt(code, i), dflt = readOpt(code, n.end), body = readArg(code, dflt.end);
-            if (!body || !/^\\[A-Za-z@]+$/.test(target) || !(Number(n.inner) >= 1)) continue;
-            const s = bodyStyle(body.inner, table);
-            if (s) macros[target.slice(1)] = s;
+        } else if (DEFINERS.has(name) || XPARSE.has(name)) {
+            const t = readName(code, i);
+            if (!t || (/^(provide|Provide)/.test(name) && defs[t.name])) continue;
+            let spec, body;
+            if (XPARSE.has(name)) { const a = readArg(code, t.end); spec = a && xparseSpec(a.inner); body = spec && readArg(code, a.end); }
+            else {
+                const n = readOpt(code, t.end), dflt = readOpt(code, n.end), k = Number(n.inner ?? 0);
+                spec = Array.from({ length: k }, (_, j) => j === 0 && dflt.inner !== null ? 'o' : 'm');
+                body = readArg(code, dflt.end);
+            }
+            if (body) defs[t.name] = { body: body.inner, spec };
+        } else if (name === 'def') {
+            const t = readName(code, i), brace = t ? code.indexOf('{', t.end) : -1;
+            const params = brace >= 0 && /^((?:#[1-9])*)$/.exec(code.slice(t.end, brace)), body = params && readArg(code, brace);
+            const k = params ? params[1].length / 2 : 0;
+            if (body && params[1] === Array.from({ length: k }, (_, j) => `#${j + 1}`).join('')) defs[t.name] = { body: body.inner, spec: Array(k).fill('m') };
+        } else if (name === 'let') {
+            const a = readName(code, i), eq = a && skipWs(code, a.end), b = a && readName(code, code[eq] === '=' ? eq + 1 : eq);
+            if (b && own(defs, b.name)) defs[a.name] = defs[b.name];
+            else if (a) delete defs[a.name];
+        } else if (name === 'newenvironment' || name === 'renewenvironment') {
+            const a = readArg(code, i), n = a && readOpt(code, a.end), dflt = n && readOpt(code, n.end), begin = dflt && readArg(code, dflt.end);
+            if (begin) envDefs.push([a.inner.trim(), begin.inner]);
         }
     }
-    return { table, macros };
+    let macros = Object.create(null);
+    for (let pass = 0; pass < 5; pass++) { // fixed point: macros that call macros
+        const next = Object.create(null);
+        for (const n of Object.keys(defs)) { const d = analyze(defs[n], table, macros); if (d) next[n] = d; }
+        const same = JSON.stringify(next) === JSON.stringify(macros);
+        macros = next;
+        if (same) break;
+    }
+    for (const [n, begin] of envDefs) { const s = bodyStyle(begin, table, macros); if (s) envs[n] = s; else delete envs[n]; }
+    return { table, macros, envs };
 }
 
-// End of the scope of a \color switch starting at i: the enclosing group, an \end, or the document end.
+const GROUP = /\\(begin|end)(?:group)?(?![A-Za-z@])/y;
+
+// +1 where a group opens ({, \begin, \begingroup), -1 where one closes, else 0.
+function delta(t, j) {
+    if (t[j] === '{') return 1;
+    if (t[j] === '}') return -1;
+    if (t[j] !== '\\') return 0;
+    GROUP.lastIndex = j;
+    const m = GROUP.exec(t);
+    return m ? (m[1] === 'begin' ? 1 : -1) : 0;
+}
+
+// End of the scope of a \color switch starting at i: the end of the enclosing group or environment;
+// the next blank line if that group never closes (mid-typing); else the document end.
 function switchEnd(t, i) {
-    for (let j = i, d = 0; j < t.length; j++) {
-        if (escaped(t, j)) continue;
-        if (t[j] === '{') d++;
-        else if (t[j] === '}') { if (d-- === 0) return j; }
-        else if (d === 0 && t.startsWith('\\end', j)) return j;
-    }
-    return t.length;
+    let d = 0;
+    for (let j = i; j < t.length; j++) if (!escaped(t, j) && (d += delta(t, j)) < 0) return j;
+    let open = 0; // depth at i
+    for (let j = 0; j < i; j++) if (!escaped(t, j)) open += delta(t, j);
+    const blank = /\n[ \t]*\n/.exec(t.slice(i));
+    return open > 0 && blank ? i + blank.index : t.length;
 }
 
 const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
 
 // Raw spans: {start, end, style}; style.color / style.bg are rgb triples in [0, 1]. probed (from the
 // probe compile) gives exact colors by macro name and by expression; spans still come from the parser.
-function spans(text, probed = undefined) {
-    const code = stripComments(text), { table, macros } = definitions(code), out = [];
+// prelude: the text of the document's other files, read for definitions only.
+function spans(text, probed = undefined, prelude = '') {
+    const code = mask(text), { table, macros, envs } = definitions(prelude ? mask(prelude) + '\n' + code : code), out = [];
     const colorFor = (model, spec) => (!model && own(probed?.exprs, spec.trim())) || colorOf(model, spec, table);
     CMD.lastIndex = 0;
     for (let m; (m = CMD.exec(code));) {
         if (escaped(code, m.index)) continue;
         const name = m[1], i = CMD.lastIndex;
-        if (name === 'textcolor' || name === 'colorbox') {
+        if (DEFINERS.has(name) || XPARSE.has(name) || name === 'def' || name === 'let') { // skip the name being defined
+            const t = readName(code, i);
+            if (t) CMD.lastIndex = t.end;
+        } else if (name === 'textcolor' || name === 'colorbox') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end);
             const v = b && colorFor(o.inner, a.inner);
             if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v } : { bg: v } });
         } else if (name === 'color') {
             const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorFor(o.inner, a.inner);
             if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v } });
-        } else if (macros[name] || own(probed?.macros, name)) {
-            const a = readArg(code, i), p = own(probed?.macros, name);
-            if (a) out.push({ start: m.index, end: a.end, style: p ? { ...macros[name], color: p } : macros[name] });
+        } else if (name === 'begin') {
+            const a = readArg(code, i), env = a && a.inner.trim();
+            if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env] });
+        } else if (own(macros, name) || own(probed?.macros, name)) {
+            const d = own(macros, name) || { style: {}, spec: ['m'], target: 0 }, p = own(probed?.macros, name);
+            const end = argsEnd(code, i, d.spec, d.target);
+            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style });
         }
     }
     return out;
+}
+
+// End of the matching \end{env} after i; the next blank line if there is none (mid-typing), else the document end.
+function envEnd(t, i, env) {
+    const re = new RegExp(String.raw`\\(begin|end)\s*\{${env.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\}`, 'g');
+    re.lastIndex = i;
+    for (let m, d = 0; (m = re.exec(t));) if (m[1] === 'begin') d++; else if (d-- === 0) return re.lastIndex;
+    const blank = /\n[ \t]*\n/.exec(t.slice(i));
+    return blank ? i + blank.index : t.length;
 }
 
 // Non-overlapping segments; where spans nest, the inner span's properties win.
@@ -184,7 +347,7 @@ function flatten(raw) {
     return out;
 }
 
-const scan = (text, probed = undefined) => flatten(spans(text, probed));
+const scan = (text, probed = undefined, prelude = '') => flatten(spans(text, probed, prelude));
 const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
 // Spans as readable records (source text, hex colors), colors then marks: for snapshots and latexColors._spans.
@@ -196,4 +359,4 @@ function readable(text, colors, marks = []) {
     ];
 }
 
-module.exports = { scan, readable, spans, definitions, parseExpr, parseSpec, stripComments, readArg, readOpt, hex, BASE };
+module.exports = { scan, readable, spans, definitions, parseExpr, parseSpec, mask, readArg, readOpt, hex, BASE };

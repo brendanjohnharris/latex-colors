@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\\textcolor{red}{#1}",
+    "start": 20,
+    "end": 39,
+    "style": {
+      "color": "#ff0000"
+    }
+  }
+]

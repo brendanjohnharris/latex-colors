@@ -1,0 +1,5 @@
+\providecommand\later[1]{\early{#1}}
+\newcommand\early[1]{\textcolor{red}{#1}}
+\newcommand\todo[1]{\early{\textbf{TODO:} #1}}
+\newcommand\ca[1]{\cb{#1}}\newcommand\cb[1]{\ca{#1}}
+\later{a} \todo{b} \ca{c}

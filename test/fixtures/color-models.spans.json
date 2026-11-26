@@ -1,0 +1,58 @@
+[
+  {
+    "text": "\\textcolor{a}{hsb}",
+    "start": 214,
+    "end": 232,
+    "style": {
+      "color": "#e6a545"
+    }
+  },
+  {
+    "text": "\\textcolor{b}{Hsb}",
+    "start": 233,
+    "end": 251,
+    "style": {
+      "color": "#66aacc"
+    }
+  },
+  {
+    "text": "\\textcolor{c}{HSB}",
+    "start": 252,
+    "end": 270,
+    "style": {
+      "color": "#bfbf20"
+    }
+  },
+  {
+    "text": "\\textcolor{e}{named}",
+    "start": 271,
+    "end": 291,
+    "style": {
+      "color": "#ad0000"
+    }
+  },
+  {
+    "text": "\\textcolor{xoney}{set one}",
+    "start": 292,
+    "end": 318,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor{xtwoy}{set two}",
+    "start": 319,
+    "end": 345,
+    "style": {
+      "color": "#0080ff"
+    }
+  },
+  {
+    "text": "\\textcolor[hsb]{0.5,1,1}{inline}",
+    "start": 346,
+    "end": 378,
+    "style": {
+      "color": "#00ffff"
+    }
+  }
+]

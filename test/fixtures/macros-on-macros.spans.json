@@ -1,0 +1,43 @@
+[
+  {
+    "text": "\\early{#1}",
+    "start": 25,
+    "end": 35,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor{red}{#1}",
+    "start": 58,
+    "end": 77,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\early{\\textbf{TODO:} #1}",
+    "start": 99,
+    "end": 124,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\later{a}",
+    "start": 179,
+    "end": 188,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\todo{b}",
+    "start": 189,
+    "end": 197,
+    "style": {
+      "color": "#ff0000",
+      "bold": true
+    }
+  }
+]

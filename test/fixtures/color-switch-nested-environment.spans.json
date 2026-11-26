@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\\color{red} quoted \\begin{itemize}\\item inner\\end{itemize} still red\n",
+    "start": 14,
+    "end": 83,
+    "style": {
+      "color": "#ff0000"
+    }
+  }
+]

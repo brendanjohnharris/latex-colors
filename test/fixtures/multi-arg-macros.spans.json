@@ -1,0 +1,42 @@
+[
+  {
+    "text": "\\textcolor{red}{#2}",
+    "start": 24,
+    "end": 43,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\textcolor{blue}{[#1] #2}",
+    "start": 69,
+    "end": 94,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\note{Ben}{text}",
+    "start": 96,
+    "end": 112,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\rep[Nao]{x}",
+    "start": 113,
+    "end": 125,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\rep{y}",
+    "start": 126,
+    "end": 133,
+    "style": {
+      "color": "#0000ff"
+    }
+  }
+]

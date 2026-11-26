@@ -136,3 +136,10 @@ test('serialize: a failing run does not block the next', async () => {
     await run('a', 2);
     assert.deepStrictEqual(calls, [1, 2]);
 });
+test('findCandidates: macros from files pulled in after \\begin{document}; preamble files give expressions only', () => {
+    const root = '\\documentclass{article}\\input{macros}\\begin{document}\\include{one}\\end{document}';
+    const files = [{ text: '\\newcommand\\ben[1]{\\textcolor{teal}{#1}}\\pre{x}', body: false }, { text: '\\ben{a} \\textcolor{Maroon}{b}', body: true }];
+    const list = findCandidates(root, files).list;
+    assert.deepStrictEqual(list.filter(c => c.kind === 'macro').map(c => c.name), ['ben']);
+    assert.deepStrictEqual(list.filter(c => c.kind === 'expr').map(c => c.expr), ['teal', 'Maroon']);
+});

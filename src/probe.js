@@ -4,7 +4,7 @@
 // Pure apart from the injected compile function.
 'use strict';
 const crypto = require('node:crypto');
-const { stripComments, readArg, readOpt } = require('./colors');
+const { mask, readArg, readOpt } = require('./colors');
 
 const LIMIT = 500;
 const DENY = new Set(['begin', 'end', 'item', 'part', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph', 'subparagraph',
@@ -18,17 +18,19 @@ const BEGIN_DOC = /\\begin\s*\{document\}/;
 
 /** Text before the first \begin{document} outside a comment, or null. */
 function preambleOf(text) {
-    const m = BEGIN_DOC.exec(stripComments(text));
+    const m = BEGIN_DOC.exec(mask(text));
     return m ? text.slice(0, m.index) : null;
 }
 
 /**
  * Commands used in the body with a braced argument, and the color expressions given anywhere to
- * \textcolor, \color or \colorbox without a model (with a model the parser is exact).
+ * \textcolor, \color or \colorbox without a model (with a model the parser is exact). files: the root's
+ * other files ({ text, body }), body ones read as part of the body and the rest for expressions only.
  * @returns {{ list: Array<{kind: 'macro', name: string} | {kind: 'expr', expr: string, names: string[]}>, truncated: number }}
  */
-function findCandidates(text) {
-    const code = stripComments(text), body = BEGIN_DOC.exec(code)?.index ?? code.length;
+function findCandidates(text, files = []) {
+    const part = body => files.filter(f => f.body === body).map(f => f.text + '\n').join('');
+    const code = mask(part(false) + text + '\n' + part(true)), body = BEGIN_DOC.exec(code)?.index ?? code.length; // files: [{ text, body }]
     const list = [], seen = new Set();
     const add = (key, c) => { if (!seen.has(key)) { seen.add(key); list.push(c); } };
     for (const m of code.matchAll(CMD)) {

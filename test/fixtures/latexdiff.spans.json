@@ -66,5 +66,14 @@
       "color": "#0000ff",
       "deco": "underline wavy"
     }
+  },
+  {
+    "text": "\\DIFaddFL{Added caption}",
+    "start": 943,
+    "end": 967,
+    "style": {
+      "color": "#0000ff",
+      "deco": "underline wavy"
+    }
   }
 ]

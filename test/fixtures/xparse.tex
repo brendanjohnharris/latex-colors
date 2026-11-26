@@ -1,0 +1,6 @@
+\NewDocumentCommand{\xa}{m}{\textcolor{red}{#1}}
+\DeclareDocumentCommand\xb{s o m}{\textcolor{blue}{#3}}
+\RenewDocumentCommand\xc{O{x}+m}{\textcolor{teal}{#2}}
+\ProvideDocumentCommand\xd{t+m}{\hl{#2}}
+\NewDocumentCommand\xe{r()}{\textcolor{red}{#1}}
+\xa{a} \xb*[o]{b} \xb{bb} \xc[o]{c} \xc{cc} \xd+{d} \xe(e)

@@ -1,0 +1,18 @@
+[
+  {
+    "text": "\\color{red}",
+    "start": 24,
+    "end": 35,
+    "style": {
+      "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\begin{redbox}\nouter \\begin{redbox} inner \\end{redbox} outer again\n\\end{redbox}",
+    "start": 76,
+    "end": 155,
+    "style": {
+      "color": "#ff0000"
+    }
+  }
+]

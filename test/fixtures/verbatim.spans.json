@@ -1,0 +1,18 @@
+[
+  {
+    "text": "\\textcolor{teal}{yes}",
+    "start": 66,
+    "end": 87,
+    "style": {
+      "color": "#008080"
+    }
+  },
+  {
+    "text": "\\textcolor{orange}{after}",
+    "start": 335,
+    "end": 360,
+    "style": {
+      "color": "#ff8000"
+    }
+  }
+]
