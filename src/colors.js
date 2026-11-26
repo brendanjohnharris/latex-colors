@@ -14,37 +14,39 @@ const NAMES = require('./names.json'); // scripts/gen-names.js
 
 const escaped = (t, i) => { let n = 0; while (i - 1 - n >= 0 && t[i - 1 - n] === '\\') n++; return n % 2 === 1; };
 
-const VERBATIM = /\\begin\s*\{(verbatim\*?|Verbatim\*?|lstlisting|minted|comment)\}/y;
+const MASKED = /%|\\verb(?![A-Za-z])|\\begin\s*\{(verbatim\*?|Verbatim\*?|lstlisting|minted|comment)\}/g;
+const blankOut = s => s.replace(/[^\n]/g, ' ');
 
 // Blank out what TeX does not read as commands, keeping offsets: % comments, \verb<d>...<d>, and the
 // bodies of verbatim-like environments.
 function mask(t) {
-    const c = t.split('');
-    const blank = (a, b) => { for (let k = a; k < b; k++) if (c[k] !== '\n') c[k] = ' '; };
-    for (let i = 0; i < t.length; i++) {
-        if ((t[i] !== '%' && t[i] !== '\\') || escaped(t, i)) continue;
+    let out = '', prev = 0;
+    MASKED.lastIndex = 0;
+    for (let m; (m = MASKED.exec(t));) {
+        const i = m.index;
+        if (escaped(t, i)) continue;
         const eol = (j => j < 0 ? t.length : j)(t.indexOf('\n', i));
-        if (t[i] === '%') { blank(i, eol); i = eol; continue; }
-        let m;
-        if (t.startsWith('\\verb', i) && !/[A-Za-z]/.test(t[i + 5] || 'a')) {
-            const d = i + (t[i + 5] === '*' ? 6 : 5), close = t.indexOf(t[d], d + 1); // delimiter: any character
-            const end = close < 0 || close > eol ? eol : close + 1;
-            blank(i, end); i = end - 1;
-        } else if ((VERBATIM.lastIndex = i, m = VERBATIM.exec(t))) {
-            const end = (j => j < 0 ? t.length : j)(t.indexOf(`\\end{${m[1]}}`, i + m[0].length));
-            blank(i + m[0].length, end); i = end - 1;
+        let from = i, end;
+        if (m[0] === '%') end = eol;
+        else if (m[1]) { from = MASKED.lastIndex; end = (j => j < 0 ? t.length : j)(t.indexOf(`\\end{${m[1]}}`, from)); }
+        else { // \verb or \verb*, then any delimiter character
+            const d = i + (t[i + 5] === '*' ? 6 : 5), close = d < t.length ? t.indexOf(t[d], d + 1) : -1;
+            end = close < 0 || close > eol ? eol : close + 1;
         }
+        out += t.slice(prev, from) + blankOut(t.slice(from, end));
+        prev = MASKED.lastIndex = Math.max(end, MASKED.lastIndex);
     }
-    return c.join('');
+    return out + t.slice(prev);
 }
 
 // Index just past the brace that closes the group opened at t[i] === '{'; -1 if unclosed.
 function closeGroup(t, i) {
     let d = 0;
     for (let j = i; j < t.length; j++) {
-        if (escaped(t, j)) continue;
-        if (t[j] === '{') d++;
-        else if (t[j] === '}' && --d === 0) return j + 1;
+        const c = t[j];
+        if ((c !== '{' && c !== '}') || escaped(t, j)) continue;
+        if (c === '{') d++;
+        else if (--d === 0) return j + 1;
     }
     return -1;
 }
@@ -117,6 +119,7 @@ const XCOLOR_OPTIONS = /\\(?:usepackage|RequirePackage)\s*\[([^\]]*)\]\s*\{[^}]*
 
 const CMD = /\\([A-Za-z@]+)\*?/g;
 const NAME = /\\([A-Za-z@]+)/y;
+const DEFINING = /\\(definecolor|providecolor|definecolorset|colorlet|newcommand|renewcommand|providecommand|DeclareRobustCommand|NewDocumentCommand|RenewDocumentCommand|ProvideDocumentCommand|DeclareDocumentCommand|def|let|newenvironment|renewenvironment)(?![A-Za-z@])\*?/g;
 const DEFINERS = new Set(['newcommand', 'renewcommand', 'providecommand', 'DeclareRobustCommand']);
 const XPARSE = new Set(['NewDocumentCommand', 'RenewDocumentCommand', 'ProvideDocumentCommand', 'DeclareDocumentCommand']);
 const ARG_STYLERS = new Set(['hl', 'texthl', 'sout', 'st', 'xout', 'uwave', 'uline', 'ul', 'underline', 'dashuline', 'dotuline', 'textbf', 'textit', 'emph']);
@@ -213,10 +216,10 @@ function definitions(code) {
     for (const m of code.matchAll(XCOLOR_OPTIONS)) for (const o of (m[1] ?? m[2] ?? m[3]).split(',')) options.add(o.trim());
     for (const o of options) Object.assign(table, own(NAMES.sets, o)); // option order: class, passed, package; the last set wins
     const envDefs = [];
-    CMD.lastIndex = 0;
-    for (let m; (m = CMD.exec(code));) {
+    DEFINING.lastIndex = 0;
+    for (let m; (m = DEFINING.exec(code));) {
         if (escaped(code, m.index)) continue;
-        const name = m[1], i = CMD.lastIndex;
+        const name = m[1], i = DEFINING.lastIndex;
         if (name === 'definecolor' || name === 'providecolor') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end), c = b && readArg(code, b.end);
             if (c) { const v = colorOf(b.inner, c.inner, table); if (v && !(name === 'providecolor' && table[a.inner.trim()])) table[a.inner.trim()] = v; }
@@ -282,9 +285,10 @@ function delta(t, j) {
 // the next blank line if that group never closes (mid-typing); else the document end.
 function switchEnd(t, i) {
     let d = 0;
-    for (let j = i; j < t.length; j++) if (!escaped(t, j) && (d += delta(t, j)) < 0) return j;
+    const marked = j => (t[j] === '{' || t[j] === '}' || t[j] === '\\') && !escaped(t, j);
+    for (let j = i; j < t.length; j++) if (marked(j) && (d += delta(t, j)) < 0) return j;
     let open = 0; // depth at i
-    for (let j = 0; j < i; j++) if (!escaped(t, j)) open += delta(t, j);
+    for (let j = 0; j < i; j++) if (marked(j)) open += delta(t, j);
     const blank = /\n[ \t]*\n/.exec(t.slice(i));
     return open > 0 && blank ? i + blank.index : t.length;
 }
@@ -296,14 +300,20 @@ const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
 // prelude: the text of the document's other files, read for definitions only.
 function spans(text, probed = undefined, prelude = '') {
     const code = mask(text), { table, macros, envs } = definitions(prelude ? mask(prelude) + '\n' + code : code), out = [];
-    const colorFor = (model, spec) => (!model && own(probed?.exprs, spec.trim())) || colorOf(model, spec, table);
-    CMD.lastIndex = 0;
-    for (let m; (m = CMD.exec(code));) {
+    const memo = new Map(), colorFor = (model, spec) => {
+        const k = `${model}\0${spec}`;
+        if (!memo.has(k)) memo.set(k, (!model && own(probed?.exprs, spec.trim())) || colorOf(model, spec, table));
+        return memo.get(k);
+    };
+    // Only commands that make or affect a span; a regex over these names skips the rest of the text quickly.
+    const names = ['textcolor', 'colorbox', 'color', 'begin', 'def', 'let', ...DEFINERS, ...XPARSE, ...Object.keys(macros), ...Object.keys(probed?.macros ?? {})];
+    const re = new RegExp(String.raw`\\(${[...new Set(names)].filter(n => /^[A-Za-z@]+$/.test(n)).join('|')})(?![A-Za-z@])\*?`, 'g');
+    for (let m; (m = re.exec(code));) {
         if (escaped(code, m.index)) continue;
-        const name = m[1], i = CMD.lastIndex;
+        const name = m[1], i = re.lastIndex;
         if (DEFINERS.has(name) || XPARSE.has(name) || name === 'def' || name === 'let') { // skip the name being defined
             const t = readName(code, i);
-            if (t) CMD.lastIndex = t.end;
+            if (t) re.lastIndex = t.end;
         } else if (name === 'textcolor' || name === 'colorbox') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end);
             const v = b && colorFor(o.inner, a.inner);
@@ -332,17 +342,25 @@ function envEnd(t, i, env) {
     return blank ? i + blank.index : t.length;
 }
 
-// Non-overlapping segments; where spans nest, the inner span's properties win.
+// Non-overlapping segments; where spans nest, the inner (shorter) span's properties win, ties in creation
+// order. A sweep: starts in order (spans() emits them so), the next end found among the few active spans.
 function flatten(raw) {
-    const cuts = [...new Set(raw.flatMap(s => [s.start, s.end]))].sort((a, b) => a - b), out = [];
-    for (let k = 0; k + 1 < cuts.length; k++) {
-        const a = cuts[k], b = cuts[k + 1];
-        const cover = raw.filter(s => s.start <= a && s.end >= b).sort((x, y) => (y.end - y.start) - (x.end - x.start));
-        if (!cover.length) continue;
-        const style = Object.assign({}, ...cover.map(s => s.style));
-        const last = out[out.length - 1];
-        if (last && last.end === a && JSON.stringify(last.style) === JSON.stringify(style)) last.end = b;
-        else out.push({ start: a, end: b, style });
+    let ids = raw.map((_, k) => k).filter(k => raw[k].start < raw[k].end);
+    if (ids.some((k, j) => j && raw[ids[j - 1]].start > raw[k].start)) ids = ids.sort((x, y) => raw[x].start - raw[y].start || x - y);
+    const order = (x, y) => (raw[y].end - raw[y].start) - (raw[x].end - raw[x].start) || x - y, out = [];
+    let active = [], next = 0, pos = 0;
+    while (next < ids.length || active.length) {
+        let b = next < ids.length ? raw[ids[next]].start : Infinity;
+        for (const k of active) b = Math.min(b, raw[k].end);
+        if (active.length && pos < b) {
+            const last = out[out.length - 1];
+            const style = active.length === 1 ? raw[active[0]].style : Object.assign({}, ...[...active].sort(order).map(k => raw[k].style));
+            if (last && last.end === pos && (last.style === style || JSON.stringify(last.style) === JSON.stringify(style))) last.end = b;
+            else out.push({ start: pos, end: b, style });
+        }
+        pos = b;
+        active = active.filter(k => raw[k].end > b);
+        while (next < ids.length && raw[ids[next]].start === b) active.push(ids[next++]);
     }
     return out;
 }

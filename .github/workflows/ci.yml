@@ -25,6 +25,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
+      - run: npm run bench -- --max 100
       - run: xvfb-run -a npm run test:vscode
         env:
           VSCODE_VERSION: ${{ matrix.vscode }}
