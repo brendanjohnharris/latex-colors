@@ -26,7 +26,10 @@ const at = (spans, text) => spans.find(s => s.text === text);
 
 suite('LaTeX Colors in VS Code', () => {
     suiteSetup(() => set('probe.enabled', false));
-    suiteTeardown(async () => { for (const k of ['probe.enabled', 'marks.enabled']) await set(k, undefined); });
+    suiteTeardown(async () => {
+        for (const k of ['probe.enabled', 'marks.enabled', 'colors.enabled', 'marks.patterns', 'marks.languages']) await set(k, undefined);
+        fs.rmSync(path.join(FIXTURES, '.vscode'), { recursive: true, force: true }); // written by the toggle commands
+    });
 
     for (const f of fs.readdirSync(FIXTURES).filter(f => /\.(tex|md)$/.test(f)).sort())
         test(`${f} matches its snapshot`, async () => {
@@ -58,22 +61,25 @@ suite('LaTeX Colors in VS Code', () => {
         assert.deepStrictEqual(s, [{ text: "\\ben{from the root's macros}", start: 0, end: 28, style: { color: '#6ea0f9' } }]);
     });
 
-    test('probe colors replace predictions, on open and after a save', async function () {
+    test('probe colors replace predictions, on open and after a save; rescan reruns it', async function () {
         if (!findOnPath('pdflatex') && !process.env.CI) this.skip();
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-vscode-'));
         try {
             const file = path.join(dir, 'probe.tex');
-            fs.writeFileSync(file, '\\documentclass{article}\n\\usepackage[dvipsnames]{xcolor}\n\\newcommand{\\xp}[1]{\\textcolor{Maroon}{#1}}\n' +
-                '\\begin{document}\n\\xp{a}\n\\end{document}\n');
+            fs.writeFileSync(file, '\\documentclass{article}\n\\usepackage{xcolor}\n\\newcommand\\tone{teal}\n\\newcommand\\ttwo{olive}\n' +
+                '\\newcommand{\\xp}[1]{\\textcolor{\\tone}{#1}}\n\\newcommand{\\yp}[1]{\\textcolor{\\ttwo}{#1}}\n\\begin{document}\n\\xp{a}\n\\end{document}\n');
+            const editor = await show(file); // probe off: the parser cannot expand \tone
+            assert.ok(!at(await spansWhen(x => x !== null), '\\xp{a}'));
             await set('probe.enabled', true);
-            const editor = await show(file);
-            const maroon = hex(parseSpec('cmyk', '0,0.87,0.68,0.32')); // dvipsnam.def; the parser alone does not know Maroon
             let s = await spansWhen(x => at(x, '\\xp{a}'), 60000);
-            assert.deepStrictEqual(at(s, '\\xp{a}')?.style, { color: maroon });
-            await editor.edit(e => e.insert(new vscode.Position(5, 0), '\\textcolor{Peach}{b}\n'));
+            assert.deepStrictEqual(at(s, '\\xp{a}')?.style, { color: '#008080' });
+            await editor.edit(e => e.insert(new vscode.Position(8, 0), '\\yp{b}\n'));
             await editor.document.save();
-            s = await spansWhen(x => at(x, '\\textcolor{Peach}{b}'), 60000);
-            assert.deepStrictEqual(at(s, '\\textcolor{Peach}{b}')?.style, { color: hex(parseSpec('cmyk', '0,0.50,0.70,0')) });
+            s = await spansWhen(x => at(x, '\\yp{b}'), 60000);
+            assert.deepStrictEqual(at(s, '\\yp{b}')?.style, { color: '#808000' });
+            await vscode.commands.executeCommand('latexColors.rescan');
+            s = await spansWhen(x => at(x, '\\yp{b}'), 60000);
+            assert.deepStrictEqual(at(s, '\\yp{b}')?.style, { color: '#808000' });
         } finally {
             await set('probe.enabled', false);
             await vscode.commands.executeCommand('workbench.action.closeAllEditors');
@@ -97,5 +103,53 @@ suite('LaTeX Colors in VS Code', () => {
             await vscode.commands.executeCommand('workbench.action.closeAllEditors');
             fs.rmSync(dir, { recursive: true, force: true });
         }
+    });
+
+    test('latexColors.colors.enabled false removes colors and keeps marks', async () => {
+        await show(path.join(FIXTURES, 'marks-latex.tex'));
+        assert.ok((await spansWhen(x => x.some(y => y.style))).some(y => y.style));
+        await set('colors.enabled', false);
+        const s = await spansWhen(x => !x.some(y => y.style));
+        assert.ok(!s.some(y => y.style) && s.some(y => y.mark));
+        await set('colors.enabled', undefined);
+    });
+
+    test('latexColors.marks.patterns replaces the marks; a bad entry is skipped', async () => {
+        await set('marks.patterns', [{ name: 'todo', regex: 'needs', color: '#ff0000' }, { name: 'bad', regex: '(', color: '#00ff00' }]);
+        await show(path.join(FIXTURES, 'marks-latex.tex'));
+        const s = await spansWhen(x => x.some(y => y.mark === 'todo'));
+        assert.deepStrictEqual(s.filter(y => y.mark).map(y => [y.mark, y.text]), [['todo', 'needs']]);
+        await set('marks.patterns', undefined);
+    });
+
+    test('latexColors.marks.languages limits where marks appear', async () => {
+        await show(path.join(FIXTURES, 'marks-markdown.md'));
+        assert.ok((await spansWhen(x => x.some(y => y.mark))).some(y => y.mark));
+        await set('marks.languages', ['latex']);
+        assert.ok(!(await spansWhen(x => !x.some(y => y.mark))).some(y => y.mark));
+        await set('marks.languages', undefined);
+    });
+
+    test('toggle commands flip the settings in workspace scope', async () => {
+        const ws = k => vscode.workspace.getConfiguration('latexColors').inspect(k)?.workspaceValue;
+        for (const [command, key] of [['latexColors.toggleColors', 'colors.enabled'], ['latexColors.toggleMarks', 'marks.enabled']]) {
+            await vscode.commands.executeCommand(command);
+            assert.strictEqual(ws(key), false, command);
+            await vscode.commands.executeCommand(command);
+            assert.strictEqual(ws(key), true, command);
+            await vscode.workspace.getConfiguration('latexColors').update(key, undefined, vscode.ConfigurationTarget.Workspace);
+        }
+    });
+
+    test('latexColors.showOutput runs', async () => vscode.commands.executeCommand('latexColors.showOutput'));
+
+    test('hover names what colored the text, its value and its origin', async () => {
+        const editor = await show(path.join(FIXTURES, 'textcolor-basic.tex'));
+        await spansWhen(x => x.length > 0);
+        const hovers = await vscode.commands.executeCommand('vscode.executeHoverProvider', editor.document.uri, new vscode.Position(0, 25));
+        const text = hovers.flatMap(h => h.contents.map(c => c.value ?? String(c))).join('\n');
+        assert.match(text, /\\textcolor\{red\}/);
+        assert.match(text, /#ff0000/);
+        assert.match(text, /predicted/);
     });
 });

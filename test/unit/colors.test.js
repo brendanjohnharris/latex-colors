@@ -193,3 +193,28 @@ test('prelude supplies definitions; spans stay in the text\'s coordinates', () =
     assert.deepStrictEqual(scan(t, undefined, pre).map(s => [t.slice(s.start, s.end), s.style]),
         [['\\ben{a}', { color: [1, 0, 0] }], ['\\textcolor{deepc}{b}', { color: [0, 0, 1] }]]);
 });
+
+// Interface (PLAN 5).
+const { lift } = require('../../src/colors');
+test('lift: mixes toward white until the luminance reaches the minimum', () => {
+    assert.deepStrictEqual(lift([1, 1, 0], 0.35), [1, 1, 0]);
+    const c = lift([0, 0, 0.5], 0.35), lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    assert.ok(lum >= 0.35 && lum < 0.45, String(lum));
+    assert.deepStrictEqual(lift([0, 0, 0.5], 0), [0, 0, 0.5]);
+});
+test('spans record what made them and whether the probe supplied the color', () => {
+    const t = '\\newcommand\\ben[1]{\\textcolor{red}{#1}}\\ben{a} \\todo{b} \\textcolor{Maroon}{c} {\\color{blue} d}';
+    const got = spans(t, { macros: { todo: [0, 0, 1] }, exprs: { Maroon: [0.68, 0, 0] } }).map(s => [s.what, s.origin]);
+    assert.deepStrictEqual(got, [['\\textcolor{red}', 'parser'], ['\\ben', 'parser'], ['\\todo', 'probe'], ['\\textcolor{Maroon}', 'probe'], ['\\color{blue}', 'parser']]);
+});
+const { renderOptions } = require('../../src/colors');
+test('renderOptions: lifts colors only when given a minimum luminance (dark theme with liftDarkColors)', () => {
+    assert.deepStrictEqual(renderOptions({ color: [0, 0, 0.5] }, null), { color: '#000080', overviewRulerColor: '#000080' });
+    assert.notStrictEqual(renderOptions({ color: [0, 0, 0.5] }, 0.35).color, '#000080');
+    assert.strictEqual(renderOptions({ color: [0, 0, 0.5] }, 0).color, '#000080');
+});
+test('renderOptions: a background alone gets readable text; decorations and fonts pass through', () => {
+    assert.deepStrictEqual(renderOptions({ bg: [1, 1, 0], deco: 'line-through', bold: true, italic: true }, 0.35),
+        { backgroundColor: '#ffff00', color: '#000000', textDecoration: 'line-through', fontWeight: 'bold', fontStyle: 'italic', overviewRulerColor: '#000000' });
+    assert.strictEqual(renderOptions({ bg: [0, 0, 0.3] }, null).color, '#ffffff');
+});

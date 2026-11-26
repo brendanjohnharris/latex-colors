@@ -2,6 +2,14 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.7.0 - 2026-11-27
+
+### Added
+- Settings `latexColors.colors.enabled`, `latexColors.marks.patterns` (your own marks: name, regex, color, background, font style; a bad entry is skipped with one warning), `latexColors.marks.languages` and `latexColors.minLuminance`.
+- Commands: Toggle Colors, Toggle Editorial Marks, Rescan and Rerun the Probe, Show Output.
+- Hover over colored text: the command or expression, its value, and whether it was predicted or probed.
+- Marks reach any language listed in `latexColors.marks.languages` (activation on startup).
+
 ## 0.6.0 - 2026-11-27
 
 ### Changed

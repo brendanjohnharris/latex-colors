@@ -2,15 +2,16 @@
 'use strict';
 const path = require('node:path');
 const vscode = require('vscode');
-const { scan, hex, readable } = require('./colors');
-const { marks, MARKS } = require('./marks');
+const { scan, spans, hex, readable, renderOptions } = require('./colors');
+const { marks, compilePatterns } = require('./marks');
 const { preambleOf, findCandidates, runProbe, toProbed, cacheKey, serialize } = require('./probe');
 const { resolveEngine } = require('./engine');
 const { findOnPath, readLatexmkrc, compileProbe, probeArgs } = require('./probeRunner');
 const { collect, findRoot } = require('./project');
 
 const types = new Map(); // style key -> decoration type
-const markTypes = new Map(); // mark kind -> decoration type
+let markTypes = new Map(), patterns = []; // mark kind -> decoration type; compiled latexColors.marks.patterns
+const warned = new Set(); // bad mark patterns, warned about once per session
 const timers = new Map(), saveTimers = new Map();
 const projects = new Map(); // document uri -> { root, files, prelude }: its root file, the files the root pulls in, their text but its own
 const probed = new Map(); // root path -> probe colors
@@ -23,30 +24,9 @@ let state, out;
 const config = (uri = undefined) => vscode.workspace.getConfiguration('latexColors', uri);
 const log = msg => out.appendLine(`[${new Date().toLocaleTimeString()}] ${msg}`);
 
-const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const dark = () => [vscode.ColorThemeKind.Dark, vscode.ColorThemeKind.HighContrast].includes(vscode.window.activeColorTheme.kind); // HighContrastLight is light
 
-function dark() {
-    const k = vscode.window.activeColorTheme.kind;
-    return k === vscode.ColorThemeKind.Dark || k === vscode.ColorThemeKind.HighContrast;
-}
-
-// On dark themes, mix colours that are too dark to read towards white.
-function lift(c) {
-    if (!dark() || !vscode.workspace.getConfiguration('latexColors').get('liftDarkColors')) return c;
-    while (lum(c) < 0.35) c = c.map(x => x + 0.15 * (1 - x));
-    return c;
-}
-
-function options(s) {
-    const o = {};
-    if (s.color) o.color = hex(lift(s.color));
-    if (s.bg) { o.backgroundColor = hex(s.bg); if (!s.color) o.color = lum(s.bg) > 0.5 ? '#000000' : '#ffffff'; }
-    if (s.deco) o.textDecoration = s.deco;
-    if (s.bold) o.fontWeight = 'bold';
-    if (s.italic) o.fontStyle = 'italic';
-    if (o.color) o.overviewRulerColor = o.color;
-    return o;
-}
+const options = s => renderOptions(s, dark() && config().get('liftDarkColors') ? config().get('minLuminance', 0.35) : null);
 
 function typeFor(style) {
     const key = JSON.stringify(style);
@@ -55,30 +35,55 @@ function typeFor(style) {
 }
 
 const isTex = doc => doc.languageId === 'latex' || doc.languageId === 'tex';
-const hasMarks = doc => isTex(doc) || doc.languageId === 'markdown' || doc.languageId === 'plaintext';
+const hasMarks = doc => config(doc.uri).get('marks.languages', []).includes(doc.languageId);
 
-for (const { kind, color } of MARKS)
-    markTypes.set(kind, vscode.window.createTextEditorDecorationType({
-        color, backgroundColor: color + '26', fontStyle: 'italic', overviewRulerColor: color }));
+// Mark decoration types from latexColors.marks.patterns; a bad entry is skipped with one warning per session.
+function loadMarks() {
+    for (const t of markTypes.values()) t.dispose();
+    const r = compilePatterns(config().get('marks.patterns'));
+    for (const e of r.errors.filter(e => !warned.has(e))) {
+        warned.add(e);
+        vscode.window.showWarningMessage(`LaTeX Colors: latexColors.marks.patterns entry ${e}; skipped.`);
+    }
+    patterns = r.patterns;
+    markTypes = new Map(patterns.map(p => [p.kind, vscode.window.createTextEditorDecorationType({
+        color: p.color, backgroundColor: p.background, fontStyle: p.fontStyle, overviewRulerColor: p.color })]));
+}
 
 function refresh(editor) {
-    if (!editor || !hasMarks(editor.document)) return;
-    const doc = editor.document, text = doc.getText();
-    const range = s => new vscode.Range(doc.positionAt(s.start), doc.positionAt(s.end));
-    const proj = projects.get(doc.uri.toString());
-    const colors = isTex(doc) ? scan(text, config(doc.uri).get('probe.enabled') ? probed.get(proj?.root ?? doc.uri.fsPath) : undefined, proj?.prelude) : [];
-    if (isTex(doc)) {
-        const ranges = new Map();
-        for (const s of colors) {
-            const t = typeFor(s.style);
-            if (!ranges.has(t)) ranges.set(t, []);
-            ranges.get(t).push(range(s));
-        }
-        for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
+    if (!editor) return;
+    const doc = editor.document, key = doc.uri.toString(), cfg = config(doc.uri);
+    const withColors = isTex(doc) && cfg.get('colors.enabled'), withMarks = hasMarks(doc) && cfg.get('marks.enabled');
+    if (!withColors && !withMarks && !applied.has(key)) return;
+    const text = doc.getText(), range = s => new vscode.Range(doc.positionAt(s.start), doc.positionAt(s.end));
+    const proj = projects.get(key);
+    const colors = withColors ? scan(text, cfg.get('probe.enabled') ? probed.get(proj?.root ?? doc.uri.fsPath) : undefined, proj?.prelude) : [];
+    const ranges = new Map();
+    for (const s of colors) {
+        const t = typeFor(s.style);
+        if (!ranges.has(t)) ranges.set(t, []);
+        ranges.get(t).push(range(s));
     }
-    const found = config(doc.uri).get('marks.enabled') ? marks(text) : [];
+    for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
+    const found = withMarks ? marks(text, patterns) : [];
     for (const [kind, t] of markTypes) editor.setDecorations(t, found.filter(m => m.kind === kind).map(range));
-    applied.set(doc.uri.toString(), { text, colors, marks: found });
+    applied.set(key, { text, colors, marks: found });
+}
+
+// What colored the text under the pointer: the innermost span, its value, and whether the probe supplied it.
+function hover(doc, pos) {
+    const cfg = config(doc.uri), proj = projects.get(doc.uri.toString()), at = doc.offsetAt(pos);
+    if (!cfg.get('colors.enabled')) return;
+    const hit = spans(doc.getText(), cfg.get('probe.enabled') ? probed.get(proj?.root ?? doc.uri.fsPath) : undefined, proj?.prelude)
+        .filter(s => s.start <= at && at < s.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0];
+    if (!hit) return;
+    const md = new vscode.MarkdownString(`\`${hit.what}\``);
+    md.supportHtml = true;
+    for (const [k, label] of [['color', 'color'], ['bg', 'background']])
+        if (hit.style[k]) md.appendMarkdown(` <span style="color:${hex(hit.style[k])};">&#9632;</span> ${label} ${hex(hit.style[k])}`);
+    for (const k of ['deco', 'bold', 'italic']) if (hit.style[k]) md.appendMarkdown(`, ${k === 'deco' ? hit.style.deco : k}`);
+    md.appendMarkdown(hit.origin === 'probe' ? ' (from the probe compile)' : ' (predicted)');
+    return new vscode.Hover(md, new vscode.Range(doc.positionAt(hit.start), doc.positionAt(hit.end)));
 }
 
 const refreshAll = () => vscode.window.visibleTextEditors.forEach(refresh);
@@ -86,6 +91,7 @@ const refreshAll = () => vscode.window.visibleTextEditors.forEach(refresh);
 function resetTypes() {
     for (const t of types.values()) t.dispose();
     types.clear();
+    loadMarks();
     refreshAll();
 }
 
@@ -138,7 +144,7 @@ async function resolveProject(doc) {
 async function probe(root) {
     const uri = vscode.Uri.file(root), cfg = config(uri), rootText = await readText(root);
     const preamble = rootText === null ? null : preambleOf(rootText);
-    if (!cfg.get('probe.enabled') || !vscode.workspace.isTrusted || preamble === null) return;
+    if (!cfg.get('probe.enabled') || !cfg.get('colors.enabled') || !vscode.workspace.isTrusted || preamble === null) return;
     const dir = path.dirname(root), name = path.basename(root);
     const others = (await collect(root, readText)).filter(f => f.path !== root), { list, truncated } = findCandidates(rootText, others);
     const lwc = vscode.workspace.getConfiguration('latex-workshop', uri); // LaTeX Workshop's activate returns no API
@@ -180,6 +186,9 @@ function activate(context) {
     state = context.workspaceState;
     cache = new Map(state.get(CACHE_STATE, []));
     out = vscode.window.createOutputChannel('LaTeX Colors');
+    loadMarks();
+    const toggle = key => () => config().update(key, !config().get(key),
+        vscode.workspace.workspaceFolders ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global);
     const watcher = vscode.workspace.createFileSystemWatcher('**/*.{tex,sty}');
     context.subscriptions.push(
         out,
@@ -202,13 +211,23 @@ function activate(context) {
             saveTimers.set(watcher, setTimeout(prepareVisible, 300));
         })),
         vscode.workspace.onDidCloseTextDocument(doc => { projects.delete(doc.uri.toString()); applied.delete(doc.uri.toString()); }),
+        vscode.commands.registerCommand('latexColors.toggleColors', toggle('colors.enabled')),
+        vscode.commands.registerCommand('latexColors.toggleMarks', toggle('marks.enabled')),
+        vscode.commands.registerCommand('latexColors.showOutput', () => out.show()),
+        vscode.commands.registerCommand('latexColors.rescan', async () => {
+            cache.clear(); probed.clear(); projects.clear(); fileCache.clear();
+            await state.update(CACHE_STATE, []);
+            log('rescan: caches cleared');
+            await Promise.all(vscode.window.visibleTextEditors.map(e => prepare(e.document)));
+        }),
+        vscode.languages.registerHoverProvider([{ language: 'latex' }, { language: 'tex' }], { provideHover: hover }),
         vscode.commands.registerCommand('latexColors._spans', () => { // hidden; for integration tests
             const a = applied.get(vscode.window.activeTextEditor?.document.uri.toString());
             return a ? readable(a.text, a.colors, a.marks) : null;
         }),
         vscode.workspace.onDidGrantWorkspaceTrust(prepareVisible),
         vscode.workspace.onDidChangeTextDocument(e => {
-            if (!hasMarks(e.document)) return;
+            if (!isTex(e.document) && !hasMarks(e.document)) return;
             clearTimeout(timers.get(e.document));
             timers.set(e.document, setTimeout(() =>
                 vscode.window.visibleTextEditors.filter(ed => ed.document === e.document).forEach(refresh), 250));

@@ -32,13 +32,27 @@ The colors above are predicted from the source on every keystroke. After each sa
 
 ## Settings
 
+<!-- settings -->
 | Setting | Default | |
 |---|---|---|
-| `latexColors.marks.enabled` | `true` | Highlight editorial marks |
-| `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read |
-| `latexColors.probe.enabled` | `true` | Run the probe compile after each save |
-| `latexColors.probe.engine` | `""` | Engine for the probe; empty chooses as above |
-| `latexColors.probe.timeout` | `30` | Seconds before a probe compile is stopped |
+| `latexColors.colors.enabled` | `true` | Color LaTeX source as xcolor colors the PDF. |
+| `latexColors.marks.enabled` | `true` | Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand..... |
+| `latexColors.marks.patterns` | the built-in marks | Editorial marks: each a `name`, a JavaScript `regex` (matched across lines with `[\s\S]`), a `color`, and optionally a `background` (default: the color at 15% opacity) and a `fontStyle` (default `italic`). Replaces the built-in marks. |
+| `latexColors.marks.languages` | `["latex","tex","markdown","plaintext"]` | Language identifiers in which editorial marks are highlighted. |
+| `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read. |
+| `latexColors.minLuminance` | `0.35` | On dark themes, colors are lightened until their relative luminance reaches this value. |
+| `latexColors.probe.enabled` | `true` | After each save, compile the preamble with a generated body (shell escape off, in a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces. |
+| `latexColors.probe.engine` | `""` | TeX engine for the probe compile. |
+| `latexColors.probe.timeout` | `30` | Seconds before a probe compile is stopped. |
+<!-- /settings -->
+
+## Commands
+
+- **LaTeX Colors: Toggle Colors** and **Toggle Editorial Marks** flip `latexColors.colors.enabled` and `latexColors.marks.enabled` for the workspace.
+- **LaTeX Colors: Rescan and Rerun the Probe** clears the caches and probes the visible documents again.
+- **LaTeX Colors: Show Output** opens the output channel with the probe's log.
+
+Hovering over colored text shows the command or expression that colored it, its value, and whether the value was predicted or came from the probe.
 
 Requires VS Code 1.145 or later.
 

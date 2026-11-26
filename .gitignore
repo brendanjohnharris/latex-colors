@@ -2,3 +2,4 @@
 node_modules/
 PLAN.md
 .vscode-test/
+test/fixtures/.vscode/

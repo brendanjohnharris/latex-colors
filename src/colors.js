@@ -300,11 +300,12 @@ const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
 // prelude: the text of the document's other files, read for definitions only.
 function spans(text, probed = undefined, prelude = '') {
     const code = mask(text), { table, macros, envs } = definitions(prelude ? mask(prelude) + '\n' + code : code), out = [];
-    const memo = new Map(), colorFor = (model, spec) => {
-        const k = `${model}\0${spec}`;
-        if (!memo.has(k)) memo.set(k, (!model && own(probed?.exprs, spec.trim())) || colorOf(model, spec, table));
+    const memo = new Map(), colorFor = (model, spec) => { // [rgb, origin] or null
+        const k = `${model}\0${spec}`, p = !model && own(probed?.exprs, spec.trim());
+        if (!memo.has(k)) memo.set(k, p ? [p, 'probe'] : (c => c && [c, 'parser'])(colorOf(model, spec, table)));
         return memo.get(k);
     };
+    const what = (name, o, a) => `\\${name}${o.inner !== null ? `[${o.inner}]` : ''}{${a.inner.trim()}}`;
     // Only commands that make or affect a span; a regex over these names skips the rest of the text quickly.
     const names = ['textcolor', 'colorbox', 'color', 'begin', 'def', 'let', ...DEFINERS, ...XPARSE, ...Object.keys(macros), ...Object.keys(probed?.macros ?? {})];
     const re = new RegExp(String.raw`\\(${[...new Set(names)].filter(n => /^[A-Za-z@]+$/.test(n)).join('|')})(?![A-Za-z@])\*?`, 'g');
@@ -317,17 +318,17 @@ function spans(text, probed = undefined, prelude = '') {
         } else if (name === 'textcolor' || name === 'colorbox') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end);
             const v = b && colorFor(o.inner, a.inner);
-            if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v } : { bg: v } });
+            if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v[0] } : { bg: v[0] }, what: what(name, o, a), origin: v[1] });
         } else if (name === 'color') {
             const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorFor(o.inner, a.inner);
-            if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v } });
+            if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v[0] }, what: what(name, o, a), origin: v[1] });
         } else if (name === 'begin') {
             const a = readArg(code, i), env = a && a.inner.trim();
-            if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env] });
+            if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env], what: `\\begin{${env}}`, origin: 'parser' });
         } else if (own(macros, name) || own(probed?.macros, name)) {
             const d = own(macros, name) || { style: {}, spec: ['m'], target: 0 }, p = own(probed?.macros, name);
             const end = argsEnd(code, i, d.spec, d.target);
-            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style });
+            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style, what: `\\${name}`, origin: p ? 'probe' : 'parser' });
         }
     }
     return out;
@@ -366,6 +367,13 @@ function flatten(raw) {
 }
 
 const scan = (text, probed = undefined, prelude = '') => flatten(spans(text, probed, prelude));
+const luminance = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+
+// Mix a color toward white until its relative luminance reaches min (for dark themes).
+function lift(c, min) {
+    for (let k = 0; k < 50 && luminance(c) < min; k++) c = c.map(x => x + 0.15 * (1 - x)); // ponytail: 50 steps reach 0.9997
+    return c;
+}
 const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
 // Spans as readable records (source text, hex colors), colors then marks: for snapshots and latexColors._spans.
@@ -377,4 +385,16 @@ function readable(text, colors, marks = []) {
     ];
 }
 
-module.exports = { scan, readable, spans, definitions, parseExpr, parseSpec, mask, readArg, readOpt, hex, BASE };
+// Decoration options for a style; minLuminance (null for none) lifts dark colors on dark themes.
+function renderOptions(s, minLuminance) {
+    const o = {};
+    if (s.color) o.color = hex(minLuminance === null ? s.color : lift(s.color, minLuminance));
+    if (s.bg) { o.backgroundColor = hex(s.bg); if (!s.color) o.color = luminance(s.bg) > 0.5 ? '#000000' : '#ffffff'; }
+    if (s.deco) o.textDecoration = s.deco;
+    if (s.bold) o.fontWeight = 'bold';
+    if (s.italic) o.fontStyle = 'italic';
+    if (o.color) o.overviewRulerColor = o.color;
+    return o;
+}
+
+module.exports = { scan, readable, renderOptions, lift, luminance, spans, definitions, parseExpr, parseSpec, mask, readArg, readOpt, hex, BASE };

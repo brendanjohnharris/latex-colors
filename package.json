@@ -2,7 +2,7 @@
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
     "description": "Colors LaTeX source the way xcolor colors the PDF (\\textcolor, \\color, \\colorbox, and one-argument macros built on them or on soul and ulem), and highlights editorial marks ([[rewrite]], xxrephrasexx, ((note)), ....expand....) in LaTeX, Markdown and plain text.",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "publisher": "local",
     "license": "MIT",
     "engines": {
@@ -22,22 +22,104 @@
         "onLanguage:latex",
         "onLanguage:tex",
         "onLanguage:markdown",
-        "onLanguage:plaintext"
+        "onLanguage:plaintext",
+        "onStartupFinished"
     ],
     "main": "./src/extension.js",
     "contributes": {
         "configuration": {
             "title": "LaTeX Colors",
             "properties": {
-                "latexColors.liftDarkColors": {
+                "latexColors.colors.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "On dark themes, lighten colors too dark to read."
+                    "description": "Color LaTeX source as xcolor colors the PDF."
                 },
                 "latexColors.marks.enabled": {
                     "type": "boolean",
                     "default": true,
                     "description": "Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand....."
+                },
+                "latexColors.marks.patterns": {
+                    "type": "array",
+                    "default": [
+                        {
+                            "name": "rewrite",
+                            "regex": "\\[\\[[\\s\\S]*?\\]\\]",
+                            "color": "#ffa829"
+                        },
+                        {
+                            "name": "rephrase",
+                            "regex": "(?<![A-Za-z])x{2,}(?:(?:(?![^A-Za-z]x{2})[^\\n])*?x{2,}(?![A-Za-z])|[A-Za-z]*)",
+                            "color": "#f93d53"
+                        },
+                        {
+                            "name": "note",
+                            "regex": "\\(\\([\\s\\S]*?\\)\\)",
+                            "color": "#b97ad7"
+                        },
+                        {
+                            "name": "expand",
+                            "regex": "\\.{4,}(?:[^\\n]*?\\.{4,})?",
+                            "color": "#88bd69"
+                        }
+                    ],
+                    "markdownDescription": "Editorial marks: each a `name`, a JavaScript `regex` (matched across lines with `[\\s\\S]`), a `color`, and optionally a `background` (default: the color at 15% opacity) and a `fontStyle` (default `italic`). Replaces the built-in marks.",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "regex",
+                            "color"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "regex": {
+                                "type": "string"
+                            },
+                            "color": {
+                                "type": "string"
+                            },
+                            "background": {
+                                "type": "string"
+                            },
+                            "fontStyle": {
+                                "type": "string",
+                                "enum": [
+                                    "italic",
+                                    "normal",
+                                    "oblique"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "latexColors.marks.languages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "latex",
+                        "tex",
+                        "markdown",
+                        "plaintext"
+                    ],
+                    "description": "Language identifiers in which editorial marks are highlighted."
+                },
+                "latexColors.liftDarkColors": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "On dark themes, lighten colors too dark to read."
+                },
+                "latexColors.minLuminance": {
+                    "type": "number",
+                    "default": 0.35,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "On dark themes, colors are lightened until their relative luminance reaches this value."
                 },
                 "latexColors.probe.enabled": {
                     "type": "boolean",
@@ -74,7 +156,29 @@
                     "description": "Seconds before a probe compile is stopped."
                 }
             }
-        }
+        },
+        "commands": [
+            {
+                "command": "latexColors.toggleColors",
+                "title": "Toggle Colors",
+                "category": "LaTeX Colors"
+            },
+            {
+                "command": "latexColors.toggleMarks",
+                "title": "Toggle Editorial Marks",
+                "category": "LaTeX Colors"
+            },
+            {
+                "command": "latexColors.rescan",
+                "title": "Rescan and Rerun the Probe",
+                "category": "LaTeX Colors"
+            },
+            {
+                "command": "latexColors.showOutput",
+                "title": "Show Output",
+                "category": "LaTeX Colors"
+            }
+        ]
     },
     "repository": {
         "type": "git",
