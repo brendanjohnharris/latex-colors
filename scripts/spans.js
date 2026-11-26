@@ -2,17 +2,11 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { scan, hex } = require('../src/colors');
+const { scan, readable } = require('../src/colors');
 const { marks } = require('../src/marks');
 
-// Readable spans: colors (for .tex) then marks, rgb triples as hex.
-function snapshot(text, ext = '.tex') {
-    const colors = ext === '.tex' ? scan(text).map(s => ({
-        text: text.slice(s.start, s.end), start: s.start, end: s.end,
-        style: Object.fromEntries(Object.entries(s.style).map(([k, v]) => [k, Array.isArray(v) ? hex(v) : v])),
-    })) : [];
-    return [...colors, ...marks(text).map(m => ({ text: text.slice(m.start, m.end), start: m.start, end: m.end, mark: m.kind }))];
-}
+// Colors (for .tex only, as in the extension) then marks.
+const snapshot = (text, ext = '.tex') => readable(text, ext === '.tex' ? scan(text) : [], marks(text));
 
 if (require.main === module) {
     const file = process.argv[2];

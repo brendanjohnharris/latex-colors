@@ -1,5 +1,6 @@
 .github/**
 .vscode-test/**
+.vscode-test.mjs
 .superpowers/**
 .claude/**
 test/**

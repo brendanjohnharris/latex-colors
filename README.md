@@ -54,6 +54,7 @@ npm install
 npm test                         # unit, fixture and fuzz tests
 npm run test:update              # rewrite fixture snapshots (test/fixtures/*.spans.json); review the diff
 npm run typecheck
+xvfb-run -a npm run test:vscode  # integration tests in VS Code (VSCODE_VERSION=insiders for Insiders)
 node scripts/spans.js file.tex   # list the spans found in a file
 ```
 

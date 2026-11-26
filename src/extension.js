@@ -2,7 +2,7 @@
 'use strict';
 const path = require('node:path');
 const vscode = require('vscode');
-const { scan, hex } = require('./colors');
+const { scan, hex, readable } = require('./colors');
 const { marks, MARKS } = require('./marks');
 const { preambleOf, findCandidates, runProbe, toProbed, cacheKey, serialize } = require('./probe');
 const { resolveEngine } = require('./engine');
@@ -12,6 +12,7 @@ const types = new Map(); // style key -> decoration type
 const markTypes = new Map(); // mark kind -> decoration type
 const timers = new Map(), saveTimers = new Map();
 const probed = new Map(); // document uri -> probe colors
+const applied = new Map(); // document uri -> { text, colors, marks } last decorated, for latexColors._spans
 const CACHE_SIZE = 20, CACHE_STATE = 'latexColors.probeCache';
 let cache = new Map(); // cacheKey -> probe colors, oldest first; mirrored in workspaceState
 let state, out;
@@ -61,17 +62,19 @@ function refresh(editor) {
     if (!editor || !hasMarks(editor.document)) return;
     const doc = editor.document, text = doc.getText();
     const range = s => new vscode.Range(doc.positionAt(s.start), doc.positionAt(s.end));
+    const colors = isTex(doc) ? scan(text, config(doc.uri).get('probe.enabled') ? probed.get(doc.uri.toString()) : undefined) : [];
     if (isTex(doc)) {
         const ranges = new Map();
-        for (const s of scan(text, config(doc.uri).get('probe.enabled') ? probed.get(doc.uri.toString()) : undefined)) {
+        for (const s of colors) {
             const t = typeFor(s.style);
             if (!ranges.has(t)) ranges.set(t, []);
             ranges.get(t).push(range(s));
         }
         for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
     }
-    const found = vscode.workspace.getConfiguration('latexColors').get('marks.enabled') ? marks(text) : [];
+    const found = config(doc.uri).get('marks.enabled') ? marks(text) : [];
     for (const [kind, t] of markTypes) editor.setDecorations(t, found.filter(m => m.kind === kind).map(range));
+    applied.set(doc.uri.toString(), { text, colors, marks: found });
 }
 
 const refreshAll = () => vscode.window.visibleTextEditors.forEach(refresh);
@@ -149,7 +152,11 @@ function activate(context) {
             clearTimeout(saveTimers.get(doc));
             saveTimers.set(doc, setTimeout(() => probeDoc(doc), 1000));
         }),
-        vscode.workspace.onDidCloseTextDocument(doc => probed.delete(doc.uri.toString())),
+        vscode.workspace.onDidCloseTextDocument(doc => { probed.delete(doc.uri.toString()); applied.delete(doc.uri.toString()); }),
+        vscode.commands.registerCommand('latexColors._spans', () => { // hidden; for integration tests
+            const a = applied.get(vscode.window.activeTextEditor?.document.uri.toString());
+            return a ? readable(a.text, a.colors, a.marks) : null;
+        }),
         vscode.workspace.onDidGrantWorkspaceTrust(probeVisible),
         vscode.workspace.onDidChangeTextDocument(e => {
             if (!hasMarks(e.document)) return;

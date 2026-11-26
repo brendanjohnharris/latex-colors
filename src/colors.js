@@ -187,4 +187,13 @@ function flatten(raw) {
 const scan = (text, probed = undefined) => flatten(spans(text, probed));
 const hex = c => '#' + c.map(x => Math.round(255 * Math.min(1, Math.max(0, x))).toString(16).padStart(2, '0')).join('');
 
-module.exports = { scan, spans, definitions, parseExpr, parseSpec, stripComments, readArg, readOpt, hex, BASE };
+// Spans as readable records (source text, hex colors), colors then marks: for snapshots and latexColors._spans.
+function readable(text, colors, marks = []) {
+    const rec = s => ({ text: text.slice(s.start, s.end), start: s.start, end: s.end });
+    return [
+        ...colors.map(s => ({ ...rec(s), style: Object.fromEntries(Object.entries(s.style).map(([k, v]) => [k, Array.isArray(v) ? hex(v) : v])) })),
+        ...marks.map(m => ({ ...rec(m), mark: m.kind })),
+    ];
+}
+
+module.exports = { scan, readable, spans, definitions, parseExpr, parseSpec, stripComments, readArg, readOpt, hex, BASE };

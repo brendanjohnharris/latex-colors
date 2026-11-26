@@ -81,14 +81,17 @@
         "url": "https://github.com/brendanjohnharris/latex-colors"
     },
     "scripts": {
-        "test": "node --test \"test/**/*.test.js\"",
-        "test:update": "UPDATE=1 node --test \"test/**/*.test.js\"",
+        "test": "node --test \"test/*.test.js\" \"test/unit/*.test.js\"",
+        "test:update": "UPDATE=1 node --test \"test/*.test.js\" \"test/unit/*.test.js\"",
         "typecheck": "tsc --noEmit -p jsconfig.json",
-        "package": "vsce package"
+        "package": "vsce package",
+        "test:vscode": "vscode-test"
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
         "@types/vscode": "1.145.0",
+        "@vscode/test-cli": "^0.0.15",
+        "@vscode/test-electron": "^3.1.0",
         "@vscode/vsce": "4.1.1",
         "typescript": "~5.9.3"
     }
