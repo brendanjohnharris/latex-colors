@@ -16,7 +16,7 @@ Braces are matched to any depth; `%` comments, `\verb` and the verbatim, `Verbat
 
 ## Faded markup
 
-Markup that does not reach the PDF is shown at reduced opacity (`latexColors.muteMarkup.opacity`), keeping its color: command names, braces, alignment tabs, optional arguments, and arguments that never print, such as those of `\label`, `\ref`, `\cite`, `\includegraphics`, `\begin{figure}[!htbp]` and color names. In `\section*{Supplementary Material}` only `\section*{` and `}` fade. Math, comments, verbatim, and commands that print a glyph (`\ldots`, `\LaTeX`) are left alone. Only the visible lines and a margin are decorated, so large documents stay responsive; on a 1 MB document finding the markup takes about 12 ms. Off with `latexColors.muteMarkup.enabled`.
+Markup that does not reach the PDF is shown at reduced opacity (`latexColors.muteMarkup.opacity`), keeping its color: command names, braces, alignment tabs, optional arguments, and arguments that never print, such as those of `\label`, `\ref`, `\includegraphics`, `\begin{figure}[!htbp]` and color names. In `\section*{Supplementary Material}` only `\section*{` and `}` fade, and in `\citealp{rampil1998}` only `\citealp{` and `}`. Math, comments, verbatim, and commands that print a glyph (`\ldots`, `\LaTeX`) are left alone. Only the visible lines and a margin are decorated, so large documents stay responsive; on a 1 MB document finding the markup takes about 12 ms. Off with `latexColors.muteMarkup.enabled`.
 
 ## Exact colors from LaTeX
 
@@ -44,7 +44,7 @@ A `[[...]]` or `((...))` mark stays within one paragraph and ends at the first `
 | Setting | Default | |
 |---|---|---|
 | `latexColors.colors.enabled` | `true` | Color LaTeX source as xcolor colors the PDF. |
-| `latexColors.muteMarkup.enabled` | `true` | Fade LaTeX markup that does not reach the PDF: command names, braces, optional arguments, and arguments that never print (labels, references, citations, file names, sizes, color names, definitions). Text, math and colors keep their look. |
+| `latexColors.muteMarkup.enabled` | `true` | Fade LaTeX markup that does not reach the PDF: command names, braces, optional arguments, and arguments that never print (labels, references, file names, sizes, color names, definitions). Text, math and colors keep their look. |
 | `latexColors.muteMarkup.opacity` | `0.5` | Opacity of faded markup. |
 | `latexColors.marks.enabled` | `true` | Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand..... |
 | `latexColors.marks.patterns` | the built-in marks | Editorial marks: each a `name`, a JavaScript `regex` (matched across lines with `[\s\S]`), a `color`, and optionally a `background` (default: the color at 15% opacity) and a `fontStyle` (default `italic`). Replaces the built-in marks. |

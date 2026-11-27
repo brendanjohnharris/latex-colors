@@ -1,6 +1,7 @@
 // @ts-check
 // Markup that does not reach the PDF: command names, braces, alignment tabs, optional arguments, and arguments
-// that never print (labels, references, citations, file names, sizes, color names, definitions). The extension
+// that never print (labels, references, file names, sizes, color names, definitions). Citation keys and notes stay,
+// standing in for the citation they print. The extension
 // shows these at reduced opacity, so they keep their color. Math, comments and verbatim are left alone. Pure.
 'use strict';
 const { mask, readArg, readOpt } = require('./colors');
@@ -8,7 +9,7 @@ const { mask, readArg, readOpt } = require('./colors');
 // Commands with arguments that do not print: per mandatory argument, M muted whole or k printed (only its
 // braces muted). Their optional arguments are muted whole.
 const ARGS = {
-    label: 'M', ref: 'M', eqref: 'M', pageref: 'M', autoref: 'M', nameref: 'M', vref: 'M', cref: 'M', Cref: 'M', cpageref: 'M',
+    label: 'M', nocite: 'M', ref: 'M', eqref: 'M', pageref: 'M', autoref: 'M', nameref: 'M', vref: 'M', cref: 'M', Cref: 'M', cpageref: 'M',
     Cpageref: 'M', crefrange: 'MM', Crefrange: 'MM', includegraphics: 'M', input: 'M', include: 'M', subfile: 'M', import: 'MM',
     subimport: 'MM', usepackage: 'M', RequirePackage: 'M', documentclass: 'M', bibliography: 'M', bibliographystyle: 'M',
     addbibresource: 'M', graphicspath: 'M', hypersetup: 'M', geometry: 'M', pagestyle: 'M', thispagestyle: 'M', setlength: 'MM',
@@ -105,13 +106,6 @@ function muted(text) {
                 TOKEN.lastIndex = Math.max(TOKEN.lastIndex, end);
                 continue;
             }
-        } else if (/cite/i.test(name) && !ARGS[name]) { // pre- and postnotes print, the key does not
-            add(i, end);
-            const j = brackets(end);
-            end = take(code, j, 'M');
-            add(j, end);
-            TOKEN.lastIndex = Math.max(TOKEN.lastIndex, end);
-            continue;
         } else if (ARGS[name]) end = take(code, end, 'o' + ARGS[name].replace(/k.*$/, ''));
         else { // a command whose arguments print: mute the brackets of its optional arguments
             add(i, end);

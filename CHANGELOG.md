@@ -2,6 +2,11 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.9.2 - 2026-11-27 (pre-release)
+
+### Changed
+- Faded markup: citation keys and notes stay at full opacity; only the command and its brackets and braces fade (`\citealp{` and `}` in `\citealp{rampil1998}`). `\nocite`, which prints nothing, still fades whole.
+
 ## 0.9.1 - 2026-11-27 (pre-release)
 
 ### Added
