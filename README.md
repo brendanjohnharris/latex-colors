@@ -36,6 +36,8 @@ The colors above are predicted from the source on every keystroke. When a root f
 | `((text))` | note to the writer | `#b97ad7` |
 | `....text....` | expand, about one dot per word | `#88bd69` |
 
+A `[[...]]` or `((...))` mark stays within one paragraph and ends at the first `]]` or `))`, so it cannot contain `]` or `)` and math such as `$((a+b)c$` never opens one. Marks in LaTeX comments, `\verb`, verbatim environments and Markdown code are ignored.
+
 ## Settings
 
 <!-- settings -->

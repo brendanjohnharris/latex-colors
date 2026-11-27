@@ -39,6 +39,7 @@ function mask(t) {
             let j = MASKED.lastIndex;
             if (m[3] === 'lstinline') j = readOpt(t, j).end;
             if (m[3] === 'mintinline') j = readArg(t, j)?.end ?? j; // the language
+            if (m[2] === 'path' && /[\s([]/.test(t[j] ?? ' ')) continue; // TikZ's \path (0,0) ..., not url.sty's
             const r = delimited(m[2] ? skipWs(t, j) : j);
             if (!r) continue;
             [from, end] = r;

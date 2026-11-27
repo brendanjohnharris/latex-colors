@@ -66,3 +66,8 @@ test('compilePatterns: a duplicate name is reported and skipped', () => {
     const r = compilePatterns([{ name: 'a', regex: 'x', color: '#000000' }, { name: 'a', regex: 'y', color: '#000000' }]);
     assert.deepStrictEqual([r.patterns.length, r.errors], [1, ['a: duplicate name']]);
 });
+test('placeholders followed by ~ } $ / \' stay separate (review 2, item 2)', () => {
+    for (const t of ['a delay of xxx~ms and a gain of xxx~dB', '\\SI{xxx}{\\milli\\second} and \\SI{xxx}{\\hertz}', '($p = xxx$; $n = xxx$)',
+        '\\ref{fig:xxx} and Table~\\ref{tab:xxx}', "xxx/s and xxx'"])
+        assert.deepStrictEqual(mk(t).map(m => m[1]), ['xxx', 'xxx'], t);
+});

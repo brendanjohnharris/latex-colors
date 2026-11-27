@@ -31,6 +31,10 @@ const GLYPHS = new Set(['LaTeX', 'LaTeXe', 'TeX', 'ldots', 'dots', 'textellipsis
     'textasciitilde', 'textasciicircum', 'textendash', 'textemdash', 'textquotedblleft', 'textquotedblright', 'textquoteleft',
     'textquoteright', 'textbullet', 'textdegree', 'textperiodcentered', 'checkmark', 'today', 'slash', 'textbar', 'textless',
     'textgreater', 'textunderscore', 'textpm', 'texttimes', 'textmu']);
+// Environments whose optional arguments do not print (placement, alignment, list options); others print theirs
+// (\begin{theorem}[Cauchy--Schwarz]), so only the brackets fade.
+const OPT_ENVS = new Set(['figure', 'figure*', 'table', 'table*', 'wrapfigure', 'wraptable', 'minipage', 'tabular', 'tabular*', 'tabularx',
+    'array', 'longtable', 'subfigure', 'subtable', 'itemize', 'enumerate', 'description', 'algorithm', 'algorithmic']);
 const SPACING = new Set(['\\', ',', ';', ':', '!', ' ', '\n', '/', '-', '@']); // \\ \, \; ... print no glyph
 const MATH = /\$\$|\$|\\\(|\\\)|\\\[|\\\]|\\(begin|end)\s*\{(equation|align|gather|multline|flalign|alignat|eqnarray|math|displaymath|dmath)(\*?)\}/g;
 const TOKEN = /\\([A-Za-z@]+)(\*?)|\\([^A-Za-z@])|[{}&]/g;
@@ -71,6 +75,10 @@ function take(t, j, spec) {
 function muted(text) {
     const code = mask(text), math = mathRegions(code), out = [];
     const add = (a, b) => { const last = out[out.length - 1]; if (last && last.end === a) last.end = b; else if (a < b) out.push({ start: a, end: b }); };
+    const brackets = j => { // fade only the brackets of the optional arguments from j; their end
+        for (let o; (o = readOpt(code, j)).inner !== null; j = o.end) { add(o.end - o.inner.length - 2, o.end - o.inner.length - 1); add(o.end - 1, o.end); }
+        return j;
+    };
     let r = 0; // next math region
     TOKEN.lastIndex = 0;
     for (let m; (m = TOKEN.exec(code));) {
@@ -88,11 +96,26 @@ function muted(text) {
         else if (/^[gex]?def$/.test(name)) { const b = code.indexOf('{', end), a = b >= 0 && readArg(code, b); if (a) end = a.end; }
         else if (name === 'begin') {
             const a = readArg(code, end), env = a ? a.inner.trim() : '';
-            if (a) end = take(code, a.end, 'o' + (ENV_ARGS[env] ?? ''));
-        } else if (ARGS[name] || /cite/i.test(name)) end = take(code, end, 'o' + (ARGS[name] ?? 'M').replace(/k.*$/, ''));
+            if (a) {
+                add(i, a.end);
+                const j = OPT_ENVS.has(env) ? take(code, a.end, 'o') : brackets(a.end);
+                if (OPT_ENVS.has(env)) add(a.end, j);
+                end = take(code, j, ENV_ARGS[env] ?? '');
+                add(j, end);
+                TOKEN.lastIndex = Math.max(TOKEN.lastIndex, end);
+                continue;
+            }
+        } else if (/cite/i.test(name) && !ARGS[name]) { // pre- and postnotes print, the key does not
+            add(i, end);
+            const j = brackets(end);
+            end = take(code, j, 'M');
+            add(j, end);
+            TOKEN.lastIndex = Math.max(TOKEN.lastIndex, end);
+            continue;
+        } else if (ARGS[name]) end = take(code, end, 'o' + ARGS[name].replace(/k.*$/, ''));
         else { // a command whose arguments print: mute the brackets of its optional arguments
             add(i, end);
-            for (let j = end, o; (o = readOpt(code, j)).inner !== null; j = o.end) { add(o.end - o.inner.length - 2, o.end - o.inner.length - 1); add(o.end - 1, o.end); }
+            brackets(end);
             continue;
         }
         add(i, end);

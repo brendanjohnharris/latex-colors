@@ -33,7 +33,7 @@ test('glyph commands and escaped characters print, so they are not muted', () =>
 test('arguments that never print are muted whole: colors, references, citations, sizes', () => {
     assert.deepStrictEqual(parts('\\textcolor{red}{text} \\colorbox[rgb]{1,0,0}{box}'), ['\\textcolor{red}{', '}', '\\colorbox[rgb]{1,0,0}{', '}']);
     assert.deepStrictEqual(parts('see \\cref{fig:a} and \\citep[p.~2]{key}; \\vspace*{2pt} \\href{https://x.org}{link}'),
-        ['\\cref{fig:a}', '\\citep[p.~2]{key}', '\\vspace*{2pt}', '\\href{https://x.org}{', '}']);
+        ['\\cref{fig:a}', '\\citep[', ']{key}', '\\vspace*{2pt}', '\\href{https://x.org}{', '}']);
     assert.deepStrictEqual(parts('\\begin{tabular}{ll}a & b \\\\[2pt] c & d\\end{tabular}'),
         ['\\begin{tabular}{ll}', '&', '\\\\[2pt]', '&', '\\end{tabular}']);
 });
@@ -44,3 +44,9 @@ test('definitions are muted whole', () =>
 
 test('comments and verbatim are left to the theme', () =>
     assert.deepStrictEqual(parts('% \\section{x}\n\\verb|\\y{z}| \\begin{verbatim}\n\\q{}\n\\end{verbatim}'), ['\\begin{verbatim}', '\\end{verbatim}']));
+test('printed optional arguments keep their text: theorem names, proof titles, citation notes (review 2, item 3)', () => {
+    assert.deepStrictEqual(parts('\\begin{theorem}[Cauchy--Schwarz] x \\end{theorem}'), ['\\begin{theorem}[', ']', '\\end{theorem}']);
+    assert.deepStrictEqual(parts('\\begin{proof}[Proof of Lemma~2] x \\end{proof}'), ['\\begin{proof}[', ']', '\\end{proof}']);
+    assert.deepStrictEqual(parts('\\citep[see][p.~12]{key}'), ['\\citep[', '][', ']{key}']);
+    assert.deepStrictEqual(parts('\\begin{table}[t] \\begin{itemize}[label=-] \\end{itemize}'), ['\\begin{table}[t]', '\\begin{itemize}[label=-]', '\\end{itemize}']);
+});

@@ -40,8 +40,11 @@ function preambleOf(text) {
 function findCandidates(text, files = []) {
     const part = body => files.filter(f => f.body === body).map(f => f.text + '\n').join('');
     const code = mask(part(false) + text + '\n' + part(true)), body = BEGIN_DOC.exec(code)?.index ?? code.length; // files: [{ text, body }]
-    const exprs = [], macros = [], seen = new Set();
-    const add = (to, key, c) => { if (!seen.has(key)) { seen.add(key); to.push(c); } };
+    const exprs = [], macros = [], seen = new Map();
+    const add = (to, key, c) => { // a macro's argument count is the fewest seen: a group after a use may be text
+        const old = seen.get(key);
+        if (old) { if (c.args < old.args) old.args = c.args; } else { seen.set(key, c); to.push(c); }
+    };
     for (const m of code.matchAll(CMD)) {
         const name = m[1], i = m.index + m[0].length;
         if (name === 'textcolor' || name === 'color' || name === 'colorbox') {

@@ -7,9 +7,10 @@ const { mask } = require('./colors');
 const DEFAULT_PATTERNS = [ // Fathom: seohae, bermejo, ianthina, qinghai
     // [[...]] and ((...)) stay within a paragraph and close at the first pair, so math such as $((a+b)c$ never opens one.
     { name: 'rewrite', regex: '\\[\\[(?:(?!\\n[ \\t]*\\n|\\[\\[)[^\\]])*?\\]\\]', color: '#ffa829' },
-    // A run of 2+ x not inside a word: wrapping text up to a closing run (not crossing a new opener; a run followed by
-    // a space or punctuation is a bare placeholder), or bare (xxx, xxxxes).
-    { name: 'rephrase', regex: '(?<![A-Za-z])x{2,}(?:(?![\\s\\-;,.!?:)\\]])(?:(?!(?<![A-Za-z])x{2})[^\\n])+?x{2,}(?![A-Za-z])|[A-Za-z]*)', color: '#f93d53' },
+    // A run of 2+ x not inside a word. It wraps text up to a closing run (not crossing a new opener) when it is exactly
+    // xx before a character other than space and punctuation, or 3+ x before a letter (xxxback-and-forthxxxx);
+    // otherwise it is a bare placeholder (xxx, xxx~ms, xxx}, xxxxes).
+    { name: 'rephrase', regex: '(?<![A-Za-z])(?:xx(?=[^\\sx\\-;,.!?:)\\]~}\'/])|x{3,}(?=[A-Za-z]))(?:(?!(?<![A-Za-z])x{2})[^\\n])+?x{2,}(?![A-Za-z])|(?<![A-Za-z])x{2,}[A-Za-z]*', color: '#f93d53' },
     { name: 'note', regex: '\\(\\((?:(?!\\n[ \\t]*\\n|\\(\\()[^)])*?\\)\\)', color: '#b97ad7' },
     { name: 'expand', regex: '\\.{4,}(?:[^\\n]*?\\.{4,})?', color: '#88bd69' },
 ];

@@ -10,11 +10,12 @@ All notable changes are listed here, in the form of [Keep a Changelog](https://k
 - `\gdef`, `\edef`, `\xdef`, and `\def` with a space before its parameters.
 
 ### Changed
-- A macro takes the style at the argument its body styles: an inner macro's color wins over an outer one, fixed text such as `\textbf{TODO:}` no longer makes the whole macro bold, and each argument of a multi-argument macro has its own style. Macros that only change the font are no longer decorated.
+- A macro takes the style at the argument its body styles: an inner macro's color wins over an outer one, fixed text such as `\textbf{TODO:}` no longer makes the whole macro bold, and a multi-argument macro takes the style of the highest-numbered argument its body styles. Macros that only change the font are no longer decorated.
 - An environment colors its body only when its begin code leaves a color switched on.
 - A macro the probe finds leaves the text color unchanged loses its predicted color (a highlight or line stays).
 - `latexColors.minLuminance` uses WCAG relative luminance; the default is now 0.15. Text on its own highlight or box keeps its color on dark themes.
-- Editorial marks: `xx...xx` wraps text ending in punctuation, math or commands; `[[...]]` and `((...))` stay within a paragraph; marks inside LaTeX comments, `\verb`, verbatim environments and Markdown code are ignored; duplicate pattern names are rejected.
+- Probe results cached by 0.9.0 are not reused, since their format changed.
+- Editorial marks: `xx...xx` wraps text ending in punctuation, math or commands, while `xxx` before `~`, `}`, `$`, `/` or `'` stays a placeholder; `[[...]]` and `((...))` stay within a paragraph; marks inside LaTeX comments, `\verb`, verbatim environments and Markdown code are ignored; duplicate pattern names are rejected.
 
 ### Fixed
 - `%` inside `\url`, `\href`, `\nolinkurl`, `\path`, `\lstinline`, `\mintinline` and `luacode` no longer starts a comment.

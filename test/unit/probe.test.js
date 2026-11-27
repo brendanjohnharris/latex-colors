@@ -169,3 +169,6 @@ test('toProbed: neutral macros and the argument count are recorded (review B4)',
     const p = toProbed(LIST, parseProbeLog(CLEAN + 'LCBEGIN 6\nLCRESULT 6=0,0,1\nLCEND 6\n', LIST).results);
     assert.deepStrictEqual([p.neutral, p.arity], [{ textbf: true }, { ben: 1, replaced: 2 }]);
 });
+test('findCandidates: a macro\'s argument count is the fewest seen, so a following group does not count (review 2, item 4)', () =>
+    assert.deepStrictEqual(findCandidates('\\begin{document}\\added{word} {\\small x} \\added{other}.\\end{document}').list.map(c => [c.name, c.args]),
+        [['added', 1]]));

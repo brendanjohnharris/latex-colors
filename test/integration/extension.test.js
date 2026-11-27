@@ -205,4 +205,16 @@ suite('LaTeX Colors in VS Code', () => {
             await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         }
     });
+
+    test('a document with more distinct colors than the decoration-type limit is not reset over and over (review 2, item 1)', async () => {
+        const words = Array.from({ length: 350 }, (_, k) => `\\colorbox[rgb]{${(k % 7) / 6},${(k % 11) / 10},${(k % 5) / 4 + k / 10000}}{w${k}}`).join(' ');
+        await show({ language: 'latex', content: words });
+        await spansWhen(x => x.length >= 350);
+        await sleep(1500);
+        const before = await vscode.commands.executeCommand('latexColors._stats');
+        await sleep(2500);
+        const after = await vscode.commands.executeCommand('latexColors._stats');
+        assert.strictEqual(after.resets, before.resets, JSON.stringify([before, after]));
+        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    });
 });

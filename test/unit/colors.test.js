@@ -313,3 +313,5 @@ test('hoverMarkdown: the command sits in a code span that its own backticks cann
 });
 test('hoverMarkdown: a lifted color says what is shown', () =>
     assert.match(hoverMarkdown('\\ben', { color: [0, 0, 0.5] }, '#6b6bc0', 'probe'), /color #000080, shown as #6b6bc0 \(from the probe compile\)/));
+test('TikZ \\path is not a url.sty \\path (review 2, item 5)', () =>
+    assert.deepStrictEqual(colored('\\path (0,0) node {\\textcolor{red}{x}} (1,1); \\path[draw] (0,0) -- (1,1);'), ['\\textcolor{red}{x}']));

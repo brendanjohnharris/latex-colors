@@ -18,10 +18,10 @@ const pendingDocs = new Set(); // documents to prepare when the save/watcher tim
 const projects = new Map(); // document uri -> { root, files, prelude }: its root file, the files the root pulls in, their text but its own
 const probed = new Map(); // root path -> probe colors
 const fileCache = new Map(); // path -> { mtime, text }
-const applied = new Map(); // document uri -> { text, raw, colors, marks, mutes } last decorated, for the hover and the hidden commands
-const CACHE_SIZE = 20, CACHE_STATE = 'latexColors.probeCache', MAX_TYPES = 300, MUTE_MARGIN = 200; // lines beyond the visible ones
-let cache = new Map(); // cacheKey -> probe colors, oldest first; mirrored in workspaceState
-let state, out;
+const applied = new Map(); // document uri -> { text, raw, colors, marks, mutes, styles } last decorated, for the hover, pruning and the hidden commands
+const CACHE_SIZE = 20, CACHE_STATE = 'latexColors.probeCache.2', MAX_TYPES = 300, MUTE_MARGIN = 200; // lines beyond the visible ones
+let cache = new Map(); // cacheKey -> probe colors, oldest first; mirrored in workspaceState under a key that changes with their format
+let state, out, resets = 0; // resets: for latexColors._stats
 
 const config = (uri = undefined) => vscode.workspace.getConfiguration('latexColors', uri);
 const log = msg => out.appendLine(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -79,9 +79,15 @@ function refresh(editor) {
     for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
     const found = withMarks ? marks(markable(text, doc.languageId), patterns) : [];
     for (const [kind, t] of markTypes) editor.setDecorations(t, found.filter(m => m.kind === kind).map(range));
-    applied.set(key, { text, raw, colors, marks: found, mutes: withMutes ? muted(text) : [] });
+    applied.set(key, { text, raw, colors, marks: found, mutes: withMutes ? muted(text) : [], styles: new Set(colors.map(s => JSON.stringify(s.style))) });
     applyMutes(editor);
-    if (types.size > MAX_TYPES) debounce('prune', 1000, resetTypes); // styles typed and deleted leave unused types behind
+    if (types.size > MAX_TYPES) debounce('prune', 1000, prune); // styles typed and deleted leave unused types behind
+}
+
+// Dispose the decoration types no visible editor uses; those in use stay, so this never refreshes or repeats.
+function prune() {
+    const live = new Set(vscode.window.visibleTextEditors.flatMap(e => [...(applied.get(e.document.uri.toString())?.styles ?? [])]));
+    for (const [k, t] of types) if (!live.has(k)) { t.dispose(); types.delete(k); }
 }
 
 // What colored the text under the pointer: the innermost span (the later one on a tie, as in flatten), its value,
@@ -101,6 +107,7 @@ function hover(doc, pos) {
 const refreshAll = () => vscode.window.visibleTextEditors.forEach(refresh);
 
 function resetTypes() {
+    resets++;
     for (const t of types.values()) t.dispose();
     types.clear();
     loadTypes();
@@ -259,6 +266,7 @@ function activate(context) {
             const a = applied.get(vscode.window.activeTextEditor?.document.uri.toString());
             return a ? readable(a.text, a.colors, a.marks) : null;
         }),
+        vscode.commands.registerCommand('latexColors._stats', () => ({ types: types.size, resets })), // hidden; for integration tests
         vscode.commands.registerCommand('latexColors._muted', () => { // hidden; for integration tests
             const a = applied.get(vscode.window.activeTextEditor?.document.uri.toString());
             return a ? a.mutes.map(r => a.text.slice(r.start, r.end)) : null;
