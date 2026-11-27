@@ -297,7 +297,8 @@ const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
 
 // Raw spans: {start, end, style}; style.color / style.bg are rgb triples in [0, 1]. probed (from the
 // probe compile) gives exact colors by macro name and by expression; spans still come from the parser.
-// prelude: the text of the document's other files, read for definitions only.
+// prelude: the text of the document's other files, read for definitions only. text.slice(start, whatEnd)
+// is the command (with its color argument) that made a span; origin says whether the probe supplied the color.
 function spans(text, probed = undefined, prelude = '') {
     const code = mask(text), { table, macros, envs } = definitions(prelude ? mask(prelude) + '\n' + code : code), out = [];
     const memo = new Map(), colorFor = (model, spec) => { // [rgb, origin] or null
@@ -305,7 +306,6 @@ function spans(text, probed = undefined, prelude = '') {
         if (!memo.has(k)) memo.set(k, p ? [p, 'probe'] : (c => c && [c, 'parser'])(colorOf(model, spec, table)));
         return memo.get(k);
     };
-    const what = (name, o, a) => `\\${name}${o.inner !== null ? `[${o.inner}]` : ''}{${a.inner.trim()}}`;
     // Only commands that make or affect a span; a regex over these names skips the rest of the text quickly.
     const names = ['textcolor', 'colorbox', 'color', 'begin', 'def', 'let', ...DEFINERS, ...XPARSE, ...Object.keys(macros), ...Object.keys(probed?.macros ?? {})];
     const re = new RegExp(String.raw`\\(${[...new Set(names)].filter(n => /^[A-Za-z@]+$/.test(n)).join('|')})(?![A-Za-z@])\*?`, 'g');
@@ -318,17 +318,17 @@ function spans(text, probed = undefined, prelude = '') {
         } else if (name === 'textcolor' || name === 'colorbox') {
             const o = readOpt(code, i), a = readArg(code, o.end), b = a && readArg(code, a.end);
             const v = b && colorFor(o.inner, a.inner);
-            if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v[0] } : { bg: v[0] }, what: what(name, o, a), origin: v[1] });
+            if (v) out.push({ start: m.index, end: b.end, style: name === 'textcolor' ? { color: v[0] } : { bg: v[0] }, whatEnd: a.end, origin: v[1] });
         } else if (name === 'color') {
             const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorFor(o.inner, a.inner);
-            if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v[0] }, what: what(name, o, a), origin: v[1] });
+            if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v[0] }, whatEnd: a.end, origin: v[1] });
         } else if (name === 'begin') {
             const a = readArg(code, i), env = a && a.inner.trim();
-            if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env], what: `\\begin{${env}}`, origin: 'parser' });
+            if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env], whatEnd: a.end, origin: 'parser' });
         } else if (own(macros, name) || own(probed?.macros, name)) {
             const d = own(macros, name) || { style: {}, spec: ['m'], target: 0 }, p = own(probed?.macros, name);
             const end = argsEnd(code, i, d.spec, d.target);
-            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style, what: `\\${name}`, origin: p ? 'probe' : 'parser' });
+            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style, whatEnd: i, origin: p ? 'probe' : 'parser' });
         }
     }
     return out;

@@ -204,7 +204,7 @@ test('lift: mixes toward white until the luminance reaches the minimum', () => {
 });
 test('spans record what made them and whether the probe supplied the color', () => {
     const t = '\\newcommand\\ben[1]{\\textcolor{red}{#1}}\\ben{a} \\todo{b} \\textcolor{Maroon}{c} {\\color{blue} d}';
-    const got = spans(t, { macros: { todo: [0, 0, 1] }, exprs: { Maroon: [0.68, 0, 0] } }).map(s => [s.what, s.origin]);
+    const got = spans(t, { macros: { todo: [0, 0, 1] }, exprs: { Maroon: [0.68, 0, 0] } }).map(s => [t.slice(s.start, s.whatEnd), s.origin]);
     assert.deepStrictEqual(got, [['\\textcolor{red}', 'parser'], ['\\ben', 'parser'], ['\\todo', 'probe'], ['\\textcolor{Maroon}', 'probe'], ['\\color{blue}', 'parser']]);
 });
 const { renderOptions } = require('../../src/colors');

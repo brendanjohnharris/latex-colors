@@ -74,10 +74,10 @@ function refresh(editor) {
 function hover(doc, pos) {
     const cfg = config(doc.uri), proj = projects.get(doc.uri.toString()), at = doc.offsetAt(pos);
     if (!cfg.get('colors.enabled')) return;
-    const hit = spans(doc.getText(), cfg.get('probe.enabled') ? probed.get(proj?.root ?? doc.uri.fsPath) : undefined, proj?.prelude)
+    const text = doc.getText(), hit = spans(text, cfg.get('probe.enabled') ? probed.get(proj?.root ?? doc.uri.fsPath) : undefined, proj?.prelude)
         .filter(s => s.start <= at && at < s.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0];
     if (!hit) return;
-    const md = new vscode.MarkdownString(`\`${hit.what}\``);
+    const md = new vscode.MarkdownString(`\`${text.slice(hit.start, hit.whatEnd).replace(/\s+/g, ' ')}\``);
     md.supportHtml = true;
     for (const [k, label] of [['color', 'color'], ['bg', 'background']])
         if (hit.style[k]) md.appendMarkdown(` <span style="color:${hex(hit.style[k])};">&#9632;</span> ${label} ${hex(hit.style[k])}`);
