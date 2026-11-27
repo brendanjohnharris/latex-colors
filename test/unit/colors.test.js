@@ -285,3 +285,14 @@ test('many ungrouped \\color switches scan in linear time', () => {
     const t0 = performance.now(); scan(t); scan(t);
     assert.ok((performance.now() - t0) / 2 < 60, `${((performance.now() - t0) / 2).toFixed(0)} ms`);
 });
+test('a macro the probe found neutral keeps only its highlight or line (review B4)', () => {
+    const t = '\\newcommand\\fake[1]{\\textcolor{red}{#1}}\\newcommand\\cut[1]{\\textcolor{red}{\\sout{#1}}}\\fake{x} \\cut{y}';
+    const probed = { macros: {}, exprs: {}, neutral: { fake: true, cut: true } };
+    assert.ok(!scan(t, probed).some(s => t.slice(s.start, s.end) === '\\fake{x}'));
+    assert.deepStrictEqual(scan(t, probed).find(s => t.slice(s.start, s.end) === '\\cut{y}')?.style, { deco: 'line-through' });
+});
+test('a macro known only to the probe spans its optional and all probed mandatory arguments (review B5)', () => {
+    const t = '\\added[id=BH]{a} \\replaced{new}{old} rest';
+    const probed = { macros: { added: [0, 0, 1], replaced: [0, 0, 1] }, exprs: {}, arity: { added: 1, replaced: 2 } };
+    assert.deepStrictEqual(colored(t, probed), ['\\added[id=BH]{a}', '\\replaced{new}{old}']);
+});

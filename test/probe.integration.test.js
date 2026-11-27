@@ -24,8 +24,9 @@ const DOC = String.raw`\documentclass{article}
 \newcommand{\viafile}[1]{\textcolor{fromfile}{#1}}
 \providecommand{\DIFadd}[1]{{\protect\color{blue}\uwave{#1}}}
 \providecommand{\DIFdel}[1]{{\protect\color{red}\sout{#1}}}
+\newcommand{\plain}[1]{#1}
 \begin{document}
-\ben{a} \benhl{b} \xp{c} \viafile{d} \DIFadd{e} \DIFdel{f} \textbf{g} \section{h}
+\ben{a} \benhl{b} \xp{c} \viafile{d} \DIFadd{e} \DIFdel{f} \textbf{g} \section{h} \plain{i}
 \textcolor{soft!50!blue}{i} \textcolor{NoSuchColor}{j} {\color{Maroon} k}
 \end{document}
 `;
@@ -49,7 +50,8 @@ test('probe with pdflatex', { skip: !PDFLATEX && !process.env.CI && 'pdflatex no
         near('\\DIFdel', [1, 0, 0]);
         near('soft!50!blue', [0.5, 0.35, 0.8]);
         near('Maroon', parseSpec('cmyk', '0,0.87,0.68,0.32'));
-        assert.strictEqual(got['\\textbf'].status, 'neutral');
+        assert.strictEqual(got['\\plain'].status, 'neutral');
+        assert.strictEqual(got['\\textbf'], undefined); // deny list
         assert.notStrictEqual(got['\\benhl'].status, 'ok'); // soul mangles the reporting command; the parser keeps the highlight
         assert.strictEqual(got['\\section'], undefined); // deny list
         assert.strictEqual(got.NoSuchColor.status, 'undefined');
@@ -76,3 +78,20 @@ for (const engine of ['pdflatex', 'lualatex'])
             fs.rmSync(root, { recursive: true, force: true });
         }
     });
+
+// The changes package writes its argument to a file; a multi-argument command (\replaced) gets every argument.
+const { execFileSync } = require('node:child_process');
+const hasChanges = (() => { try { return !!execFileSync('kpsewhich', ['changes.sty'], { encoding: 'utf8' }).trim(); } catch { return false; } })();
+test('pdflatex: the changes package (review B3)', { skip: !(PDFLATEX && hasChanges) && 'pdflatex or changes.sty missing', timeout: 120000 }, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-int-'));
+    try {
+        const doc = '\\documentclass{article}\n\\usepackage{changes}\n\\begin{document}\n\\added{a} \\deleted{b} \\replaced{c}{d} \\highlight{e}\n\\end{document}\n';
+        const { list } = findCandidates(doc);
+        const r = await runProbe(preambleOf(doc), list, tex => compileProbe({ engine: PDFLATEX, root, tex, timeout: 60 }));
+        const got = Object.fromEntries(list.map((c, k) => [c.name, r.results[k]]));
+        for (const n of ['added', 'deleted', 'replaced']) assert.strictEqual(got[n].status, 'ok', `${n}: ${JSON.stringify(got[n])}`);
+        assert.deepStrictEqual(got.replaced.rgb, got.added.rgb); // \replaced reports the color of its new text, its first argument
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});

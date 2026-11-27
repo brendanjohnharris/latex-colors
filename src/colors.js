@@ -365,9 +365,14 @@ function collectSpans(code, state, probed = undefined, fonts = false) {
         } else if (fonts && own(FONT_SWITCHES, name)) {
             out.push({ start: m.index, end: switchEnd(code, i), style: FONT_SWITCHES[name], whatEnd: i, origin: 'parser' });
         } else if (own(macros, name) || own(probed?.macros, name)) {
-            const d = own(macros, name) || { style: {}, spec: ['o', 'm'], target: 1 }, p = own(probed?.macros, name);
-            const end = argsEnd(code, i, d.spec, d.target);
+            const n = own(probed?.arity, name) || 1, d = own(macros, name) || { style: {}, spec: ['o', ...Array(n).fill('m')], target: n };
+            const p = own(probed?.macros, name), end = argsEnd(code, i, d.spec, d.target);
             let style = p ? { ...d.style, color: p } : d.style;
+            if (!p && own(probed?.neutral, name)) { // LaTeX says the text color is unchanged: keep only a highlight or line
+                const { color, ...rest } = style;
+                if (!rest.bg && !rest.deco) continue;
+                style = rest;
+            }
             if (d.builtin && d.style.bg) // the latest \sethlcolor whose group is still open
                 for (let k = hlColors.length - 1; k >= 0; k--) if (m.index < hlColors[k][1]) { style = { ...style, bg: hlColors[k][0] }; break; }
             if (end >= 0) out.push({ start: m.index, end, style, whatEnd: i, origin: p ? 'probe' : 'parser' });

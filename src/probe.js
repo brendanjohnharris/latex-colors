@@ -7,12 +7,21 @@ const crypto = require('node:crypto');
 const { mask, readArg, readOpt } = require('./colors');
 
 const LIMIT = 500;
+// Commands that are never color candidates: structure, references, definitions, spacing, and the math, font
+// and box commands that fill math-heavy documents (each fails in the probe's text-mode box or leaves the color unchanged).
 const DENY = new Set(['begin', 'end', 'item', 'part', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph', 'subparagraph',
     'caption', 'label', 'bibliography', 'bibliographystyle', 'include', 'input', 'subfile', 'import', 'includegraphics', 'url', 'href',
     'footnote', 'marginpar', 'newcommand', 'renewcommand', 'providecommand', 'DeclareRobustCommand', 'NewDocumentCommand',
     'RenewDocumentCommand', 'ProvideDocumentCommand', 'DeclareDocumentCommand', 'newenvironment', 'renewenvironment', 'def', 'hspace',
-    'vspace', 'verb', 'textcolor', 'color', 'colorbox']);
+    'vspace', 'verb', 'textcolor', 'color', 'colorbox',
+    'frac', 'dfrac', 'tfrac', 'sqrt', 'binom', 'hat', 'widehat', 'tilde', 'widetilde', 'bar', 'overline', 'underline', 'vec', 'dot',
+    'ddot', 'bm', 'boldsymbol', 'mathcal', 'mathbb', 'mathrm', 'mathbf', 'mathit', 'mathsf', 'mathtt', 'mathfrak', 'mathscr', 'operatorname',
+    'text', 'mbox', 'fbox', 'makebox', 'framebox', 'parbox', 'raisebox', 'phantom', 'vphantom', 'hphantom', 'smash', 'overset', 'underset',
+    'stackrel', 'textbf', 'textit', 'emph', 'texttt', 'textsc', 'textsf', 'textrm', 'textup', 'textsl', 'textmd', 'textnormal',
+    'SI', 'si', 'qty', 'unit', 'num', 'ang', 'SIrange', 'qtyrange', 'numrange', 'crefrange', 'Crefrange', 'setlength', 'addtolength',
+    'setcounter', 'addtocounter', 'usepackage', 'RequirePackage', 'thanks', 'title', 'author', 'date', 'nocite']);
 const denied = name => DENY.has(name) || /cite/i.test(name) || /ref$/i.test(name); // \cite*, \parencite, \ref, \eqref, \cref, ...
+const EXTENDED = /[:>+\[\]=;,]/; // extended xcolor syntax (rgb:red,1;green,2, red>wheel,3, series): no plain names to pre-check
 const CMD = /\\([A-Za-z@]+)\*?/g;
 const BEGIN_DOC = /\\begin\s*\{document\}/;
 
@@ -26,28 +35,35 @@ function preambleOf(text) {
  * Commands used in the body with a braced argument, and the color expressions given anywhere to
  * \textcolor, \color or \colorbox without a model (with a model the parser is exact). files: the root's
  * other files ({ text, body }), body ones read as part of the body and the rest for expressions only.
- * @returns {{ list: Array<{kind: 'macro', name: string} | {kind: 'expr', expr: string, names: string[]}>, truncated: number }}
+ * @returns {{ list: Array<{kind: 'macro', name: string, args: number} | {kind: 'expr', expr: string, names: string[]}>, truncated: number }}
  */
 function findCandidates(text, files = []) {
     const part = body => files.filter(f => f.body === body).map(f => f.text + '\n').join('');
     const code = mask(part(false) + text + '\n' + part(true)), body = BEGIN_DOC.exec(code)?.index ?? code.length; // files: [{ text, body }]
-    const list = [], seen = new Set();
-    const add = (key, c) => { if (!seen.has(key)) { seen.add(key); list.push(c); } };
+    const exprs = [], macros = [], seen = new Set();
+    const add = (to, key, c) => { if (!seen.has(key)) { seen.add(key); to.push(c); } };
     for (const m of code.matchAll(CMD)) {
         const name = m[1], i = m.index + m[0].length;
         if (name === 'textcolor' || name === 'color' || name === 'colorbox') {
             const o = readOpt(code, i), a = o.inner === null && readArg(code, o.end), expr = a && a.inner.trim();
-            if (expr && !/[\\{}#%]/.test(expr))
-                add('e' + expr, { kind: 'expr', expr, names: expr.split('!').map(s => s.trim().replace(/^-+/, '')).filter(s => s && s !== '.' && !/^[\d.]+$/.test(s)) });
-        } else if (m.index > body && !denied(name) && readArg(code, i)) add('m' + name, { kind: 'macro', name });
+            if (expr && !/[\\{}#%]/.test(expr)) add(exprs, 'e' + expr, { kind: 'expr', expr, names: EXTENDED.test(expr) ? [] :
+                expr.split('!').map(s => s.trim().replace(/^-+/, '')).filter(s => s && s !== '.' && !/^[\d.]+$/.test(s)) });
+        } else if (m.index > body && !denied(name)) {
+            let j = i, args = 0;
+            for (let o; (o = readOpt(code, j)).inner !== null;) j = o.end; // \added[id=BH]{...}
+            for (let a; args < 9 && (a = readArg(code, j));) { j = a.end; args++; }
+            if (args) add(macros, 'm' + name, { kind: 'macro', name, args });
+        }
     }
+    const list = [...exprs, ...macros]; // expressions first: the limit drops unknown macros before them
     return { list: list.slice(0, LIMIT), truncated: Math.max(0, list.length - LIMIT) };
 }
 
+// \lcreport is protected, so packages that write their argument to a file (changes, todonotes) do not expand it.
 // \lcend ends a paragraph in a scratch box: TeX quits after 100 errors without a paragraph end.
 const DEFS = String.raw`\makeatletter
 \def\lc@emit#1#2{\extractcolorspecs{#2}\lc@m\lc@s\convertcolorspec\lc@m\lc@s{rgb}\lc@rgb\typeout{LCRESULT #1=\lc@rgb}}
-\newcommand\lcreport[1]{\lc@emit{#1}{.}}
+\protected\def\lcreport#1{\lc@emit{#1}{.}}
 \newcommand\lcbegin[1]{\typeout{LCBEGIN #1}}
 \newcommand\lcend[1]{\setbox0\vbox{\leavevmode\par}\typeout{LCEND #1}}
 \newcommand\lcexpr[3]{\let\lc@ok\@firstoftwo
@@ -56,12 +72,13 @@ const DEFS = String.raw`\makeatletter
 \makeatother
 `;
 
-/** Probe document; candidate k gets id k + 1, id 0 is the text color. Blank lines stop runaway arguments. */
+/** Probe document; candidate k gets id k + 1, id 0 is the text color. Blank lines stop runaway arguments. A macro gets
+ * as many arguments as at its first use, each reporting; the first color that differs from the text color counts. */
 function buildProbe(preamble, list) {
     const lines = list.map((c, k) => {
         const id = k + 1;
         return c.kind === 'macro'
-            ? `\\lcbegin{${id}}\\setbox0\\hbox{\\${c.name}{\\lcreport{${id}}}}\\lcend{${id}}`
+            ? `\\lcbegin{${id}}\\setbox0\\hbox{\\${c.name}${`{\\lcreport{${id}}}`.repeat(c.args || 1)}}\\lcend{${id}}` // every argument reports
             : `\\lcbegin{${id}}\\lcexpr{${id}}{${c.expr}}{${c.names.join(',')}}\\lcend{${id}}`;
     });
     return preamble + '\n\\makeatletter\\@ifpackageloaded{xcolor}{}{\\RequirePackage{xcolor}}\\makeatother\n\\begin{document}\n' + DEFS +
@@ -77,20 +94,20 @@ const sameColor = (a, b) => a.every((x, k) => Math.abs(x - b[k]) < 1e-4);
  * finished, null if the run completed.
  */
 function parseProbeLog(log, list) {
-    const n = list.length, ids = Array.from({ length: n + 1 }, () => ({ ended: false, rgb: null, undef: false, error: null }));
+    const n = list.length, ids = Array.from({ length: n + 1 }, () => ({ ended: false, rgbs: [], undef: false, error: null }));
     let cur = -1;
     for (const line of log.split(/\r?\n/)) {
         let m;
         if ((m = /^LCBEGIN (\d+)$/.exec(line))) cur = +m[1];
         else if ((m = /^LCEND (\d+)$/.exec(line))) { if (ids[+m[1]]) ids[+m[1]].ended = true; cur = -1; }
-        else if ((m = /^LCRESULT (\d+)=(.*)$/.exec(line.trim())) && ids[+m[1]] && !ids[+m[1]].rgb) {
+        else if ((m = /^LCRESULT (\d+)=(.*)$/.exec(line.trim())) && ids[+m[1]]) {
             const v = m[2].split(',').map(Number);
             if (m[2] === 'undefined') ids[+m[1]].undef = true;
-            else if (v.length === 3 && v.every(Number.isFinite)) ids[+m[1]].rgb = v;
+            else if (v.length === 3 && v.every(Number.isFinite)) ids[+m[1]].rgbs.push(v);
         } else if (cur >= 0 && ids[cur] && line.startsWith('!') && !ids[cur].error) ids[cur].error = line.trim();
     }
-    if (!ids[0].ended || !ids[0].rgb) return { baseline: null, results: Array(n).fill(null), fatal: -1, error: ids[0].error };
-    const baseline = ids[0].rgb;
+    if (!ids[0].ended || !ids[0].rgbs.length) return { baseline: null, results: Array(n).fill(null), fatal: -1, error: ids[0].error };
+    const baseline = ids[0].rgbs[0];
     let fatal = null;
     const results = list.map((c, k) => {
         const r = ids[k + 1];
@@ -98,9 +115,10 @@ function parseProbeLog(log, list) {
         if (!r.ended) { fatal = k; return { status: 'failed', error: r.error || 'fatal stop' }; }
         if (r.error) return { status: 'failed', error: r.error };
         if (r.undef) return { status: 'undefined' };
-        if (!r.rgb) return { status: 'failed', error: 'no result' };
-        if (c.kind === 'macro' && sameColor(r.rgb, baseline)) return { status: 'neutral' };
-        return { status: 'ok', rgb: r.rgb };
+        if (!r.rgbs.length) return { status: 'failed', error: 'no result' };
+        const rgb = r.rgbs.find(v => !sameColor(v, baseline));
+        if (c.kind === 'macro' && !rgb) return { status: 'neutral' };
+        return { status: 'ok', rgb: rgb ?? r.rgbs[0] };
     });
     return { baseline, results, fatal };
 }
@@ -124,12 +142,14 @@ async function runProbe(preamble, list, compile, maxRuns = 5) {
     return { baseline, runs, error, results: results.map(r => r || { status: 'failed', error: error || 'not run' }) };
 }
 
-/** Colors for the parser: ok results only. */
+/** For the parser: colors of ok macros and expressions, the argument count of each ok macro, and the macros that
+ * leave the text color unchanged (neutral), whose predicted color the parser drops. */
 function toProbed(list, results) {
-    const probed = { macros: {}, exprs: {} };
+    const probed = { macros: {}, exprs: {}, arity: {}, neutral: {} };
     list.forEach((c, k) => {
+        if (c.kind === 'macro' && results[k]?.status === 'neutral') probed.neutral[c.name] = true;
         if (results[k]?.status !== 'ok') return;
-        if (c.kind === 'macro') probed.macros[c.name] = results[k].rgb;
+        if (c.kind === 'macro') { probed.macros[c.name] = results[k].rgb; probed.arity[c.name] = c.args || 1; }
         else probed.exprs[c.expr] = results[k].rgb;
     });
     return probed;

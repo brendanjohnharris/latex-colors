@@ -4,7 +4,7 @@
 \begin{document}
 \makeatletter
 \def\lc@emit#1#2{\extractcolorspecs{#2}\lc@m\lc@s\convertcolorspec\lc@m\lc@s{rgb}\lc@rgb\typeout{LCRESULT #1=\lc@rgb}}
-\newcommand\lcreport[1]{\lc@emit{#1}{.}}
+\protected\def\lcreport#1{\lc@emit{#1}{.}}
 \newcommand\lcbegin[1]{\typeout{LCBEGIN #1}}
 \newcommand\lcend[1]{\setbox0\vbox{\leavevmode\par}\typeout{LCEND #1}}
 \newcommand\lcexpr[3]{\let\lc@ok\@firstoftwo
@@ -22,5 +22,7 @@
 \lcbegin{4}\lcexpr{4}{Maroon}{Maroon}\lcend{4}
 
 \lcbegin{5}\setbox0\hbox{\hl{\lcreport{5}}}\lcend{5}
+
+\lcbegin{6}\setbox0\hbox{\replaced{\lcreport{6}}{\lcreport{6}}}\lcend{6}
 
 \end{document}
