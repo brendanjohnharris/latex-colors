@@ -74,3 +74,7 @@ test('a local class file and the class it loads are collected', async () => {
     assert.deepStrictEqual((await collect(P('t', 'main.tex'), async p => files[p] ?? null)).map(f => path.basename(f.path)),
         ['main.tex', 'thesis.cls', 'basethesis.cls']);
 });
+const { byProximity } = require('../../src/project');
+test('byProximity: candidate roots nearest the file first (review I2)', () =>
+    assert.deepStrictEqual(byProximity('/w/paper/chapters/one.tex', ['/w/other/main.tex', '/w/paper/main.tex', '/w/paper/chapters/x.tex', '/z.tex']),
+        ['/w/paper/chapters/x.tex', '/w/paper/main.tex', '/w/other/main.tex', '/z.tex']));

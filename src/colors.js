@@ -423,7 +423,8 @@ function flatten(raw) {
 }
 
 const scan = (text, probed = undefined, prelude = '') => flatten(spans(text, probed, prelude));
-const luminance = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const linear = x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; // sRGB transfer function
+const luminance = c => 0.2126 * linear(c[0]) + 0.7152 * linear(c[1]) + 0.0722 * linear(c[2]); // WCAG relative luminance
 
 // Mix a color toward white until its relative luminance reaches min (for dark themes).
 function lift(c, min) {
@@ -441,11 +442,12 @@ function readable(text, colors, marks = []) {
     ];
 }
 
-// Decoration options for a style; minLuminance (null for none) lifts dark colors on dark themes.
+// Decoration options for a style; minLuminance (null for none) lifts dark colors on dark themes, except text on
+// its own background, which keeps its contrast with that background.
 function renderOptions(s, minLuminance) {
     const o = {};
-    if (s.color) o.color = hex(minLuminance === null ? s.color : lift(s.color, minLuminance));
-    if (s.bg) { o.backgroundColor = hex(s.bg); if (!s.color) o.color = luminance(s.bg) > 0.5 ? '#000000' : '#ffffff'; }
+    if (s.color) o.color = hex(minLuminance === null || s.bg ? s.color : lift(s.color, minLuminance));
+    if (s.bg) { o.backgroundColor = hex(s.bg); if (!s.color) o.color = luminance(s.bg) > 0.179 ? '#000000' : '#ffffff'; } // equal contrast at 0.179
     if (s.deco) o.textDecoration = s.deco;
     if (s.bold) o.fontWeight = 'bold';
     if (s.italic) o.fontStyle = 'italic';
@@ -453,4 +455,15 @@ function renderOptions(s, minLuminance) {
     return o;
 }
 
-module.exports = { scan, flatten, readable, renderOptions, lift, luminance, spans, definitions, parseExpr, parseSpec, mask, readArg, readOpt, hex, BASE };
+// Hover text for a span: the command (in a code span longer than any backtick run in it, so the source cannot
+// close it or inject HTML), a swatch and value per color, the color shown if lifted, and where the color came from.
+function hoverMarkdown(what, style, shown, origin) {
+    const fence = '`'.repeat(1 + Math.max(0, ...[...what.matchAll(/`+/g)].map(m => m[0].length)));
+    const swatch = c => `<span style="color:${hex(c)};">&#9632;</span>`, parts = [];
+    if (style.color) parts.push(`${swatch(style.color)} color ${hex(style.color)}${shown && shown !== hex(style.color) ? `, shown as ${shown}` : ''}`);
+    if (style.bg) parts.push(`${swatch(style.bg)} background ${hex(style.bg)}`);
+    for (const k of ['deco', 'bold', 'italic']) if (style[k]) parts.push(k === 'deco' ? style.deco : k);
+    return `${fence} ${what} ${fence} ${parts.join(', ')} (${origin === 'probe' ? 'from the probe compile' : 'predicted'})`;
+}
+
+module.exports = { scan, flatten, readable, renderOptions, hoverMarkdown, lift, luminance, spans, definitions, parseExpr, parseSpec, mask, readArg, readOpt, hex, BASE };

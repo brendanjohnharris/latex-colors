@@ -95,4 +95,10 @@ async function findRoot(file, text, io) {
     return file;
 }
 
-module.exports = { includes, collect, findRoot };
+/** Candidate roots ordered by how many leading folders they share with file, nearest first. */
+function byProximity(file, paths) {
+    const shared = p => { const a = path.dirname(file).split(path.sep), b = path.dirname(p).split(path.sep); let k = 0; while (k < a.length && a[k] === b[k]) k++; return k; };
+    return paths.map(p => [p, shared(p)]).sort((x, y) => y[1] - x[1]).map(x => x[0]);
+}
+
+module.exports = { includes, collect, findRoot, byProximity };

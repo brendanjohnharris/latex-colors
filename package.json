@@ -59,12 +59,28 @@
                 "latexColors.colors.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Color LaTeX source as xcolor colors the PDF."
+                    "description": "Color LaTeX source as xcolor colors the PDF.",
+                    "scope": "resource"
+                },
+                "latexColors.muteMarkup.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Fade LaTeX markup that does not reach the PDF: command names, braces, optional arguments, and arguments that never print (labels, references, citations, file names, sizes, color names, definitions). Text, math and colors keep their look.",
+                    "scope": "resource"
+                },
+                "latexColors.muteMarkup.opacity": {
+                    "type": "number",
+                    "default": 0.5,
+                    "minimum": 0.1,
+                    "maximum": 1,
+                    "description": "Opacity of faded markup.",
+                    "scope": "window"
                 },
                 "latexColors.marks.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand....."
+                    "description": "Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand.....",
+                    "scope": "resource"
                 },
                 "latexColors.marks.patterns": {
                     "type": "array",
@@ -120,7 +136,8 @@
                                 ]
                             }
                         }
-                    }
+                    },
+                    "scope": "window"
                 },
                 "latexColors.marks.languages": {
                     "type": "array",
@@ -133,24 +150,28 @@
                         "markdown",
                         "plaintext"
                     ],
-                    "description": "Language identifiers in which editorial marks are highlighted."
+                    "description": "Language identifiers in which editorial marks are highlighted.",
+                    "scope": "resource"
                 },
                 "latexColors.liftDarkColors": {
                     "type": "boolean",
                     "default": true,
-                    "description": "On dark themes, lighten colors too dark to read."
+                    "description": "On dark themes, lighten colors too dark to read.",
+                    "scope": "window"
                 },
                 "latexColors.minLuminance": {
                     "type": "number",
-                    "default": 0.35,
+                    "default": 0.15,
                     "minimum": 0,
                     "maximum": 1,
-                    "description": "On dark themes, colors are lightened until their relative luminance reaches this value."
+                    "description": "On dark themes, colors are lightened until their WCAG relative luminance reaches this value (0.15 gives a contrast of about 3:1 on a #1e1e1e background). Text on its own highlight or box keeps its color.",
+                    "scope": "window"
                 },
                 "latexColors.probe.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "When a root file is opened and after each save, compile its preamble with a generated body (shell escape off, inside a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces."
+                    "description": "When a root file is opened and after each save, compile its preamble with a generated body (shell escape off, inside a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces.",
+                    "scope": "resource"
                 },
                 "latexColors.probe.engine": {
                     "type": "string",
@@ -173,13 +194,15 @@
                         "",
                         ""
                     ],
-                    "description": "TeX engine for the probe compile."
+                    "description": "TeX engine for the probe compile.",
+                    "scope": "resource"
                 },
                 "latexColors.probe.timeout": {
                     "type": "number",
                     "default": 30,
                     "minimum": 1,
-                    "description": "Seconds before a probe compile is stopped."
+                    "description": "Seconds before a probe compile is stopped.",
+                    "scope": "resource"
                 }
             }
         },

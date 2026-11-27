@@ -14,6 +14,10 @@ A VS Code extension that colors LaTeX source the way xcolor colors the PDF, and 
 
 Braces are matched to any depth; `%` comments, `\verb` and the verbatim, `Verbatim`, `lstlisting`, `minted` and `comment` environments are skipped. Where colored spans nest, the inner one wins.
 
+## Faded markup
+
+Markup that does not reach the PDF is shown at reduced opacity (`latexColors.muteMarkup.opacity`), keeping its color: command names, braces, alignment tabs, optional arguments, and arguments that never print, such as those of `\label`, `\ref`, `\cite`, `\includegraphics`, `\begin{figure}[!htbp]` and color names. In `\section*{Supplementary Material}` only `\section*{` and `}` fade. Math, comments, verbatim, and commands that print a glyph (`\ldots`, `\LaTeX`) are left alone. Only the visible lines and a margin are decorated, so large documents stay responsive; on a 1 MB document finding the markup takes about 12 ms. Off with `latexColors.muteMarkup.enabled`.
+
 ## Exact colors from LaTeX
 
 The colors above are predicted from the source on every keystroke. When a root file is opened, and after each save, a probe compile of the document's root file asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors computed by macros, package commands such as those of `changes` (`\added`, `\deleted`, `\replaced`), and any xcolor expression are exact. A command that colors a box or note rather than its text, such as `todonotes`' `\todo`, is left as it is. Extents, highlights and strikethroughs still come from the parser.
@@ -38,11 +42,13 @@ The colors above are predicted from the source on every keystroke. When a root f
 | Setting | Default | |
 |---|---|---|
 | `latexColors.colors.enabled` | `true` | Color LaTeX source as xcolor colors the PDF. |
+| `latexColors.muteMarkup.enabled` | `true` | Fade LaTeX markup that does not reach the PDF: command names, braces, optional arguments, and arguments that never print (labels, references, citations, file names, sizes, color names, definitions). Text, math and colors keep their look. |
+| `latexColors.muteMarkup.opacity` | `0.5` | Opacity of faded markup. |
 | `latexColors.marks.enabled` | `true` | Highlight editorial marks: [[rewrite]], xxrephrasexx, ((note)), ....expand..... |
 | `latexColors.marks.patterns` | the built-in marks | Editorial marks: each a `name`, a JavaScript `regex` (matched across lines with `[\s\S]`), a `color`, and optionally a `background` (default: the color at 15% opacity) and a `fontStyle` (default `italic`). Replaces the built-in marks. |
 | `latexColors.marks.languages` | `["latex","tex","markdown","plaintext"]` | Language identifiers in which editorial marks are highlighted. |
 | `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read. |
-| `latexColors.minLuminance` | `0.35` | On dark themes, colors are lightened until their relative luminance reaches this value. |
+| `latexColors.minLuminance` | `0.15` | On dark themes, colors are lightened until their WCAG relative luminance reaches this value (0.15 gives a contrast of about 3:1 on a #1e1e1e background). Text on its own highlight or box keeps its color. |
 | `latexColors.probe.enabled` | `true` | When a root file is opened and after each save, compile its preamble with a generated body (shell escape off, inside a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces. |
 | `latexColors.probe.engine` | `""` | TeX engine for the probe compile. |
 | `latexColors.probe.timeout` | `30` | Seconds before a probe compile is stopped. |

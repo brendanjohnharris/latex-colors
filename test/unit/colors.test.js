@@ -197,9 +197,10 @@ test('prelude supplies definitions; spans stay in the text\'s coordinates', () =
 // Interface (PLAN 5).
 const { lift } = require('../../src/colors');
 test('lift: mixes toward white until the luminance reaches the minimum', () => {
-    assert.deepStrictEqual(lift([1, 1, 0], 0.35), [1, 1, 0]);
-    const c = lift([0, 0, 0.5], 0.35), lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-    assert.ok(lum >= 0.35 && lum < 0.45, String(lum));
+    const lum = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]), lin = x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    assert.deepStrictEqual(lift([1, 1, 0], 0.15), [1, 1, 0]);
+    const c = lift([0, 0, 0.5], 0.15);
+    assert.ok(lum(c) >= 0.15 && lum(c) < 0.25, String(lum(c)));
     assert.deepStrictEqual(lift([0, 0, 0.5], 0), [0, 0, 0.5]);
 });
 test('spans record what made them and whether the probe supplied the color', () => {
@@ -296,3 +297,19 @@ test('a macro known only to the probe spans its optional and all probed mandator
     const probed = { macros: { added: [0, 0, 1], replaced: [0, 0, 1] }, exprs: {}, arity: { added: 1, replaced: 2 } };
     assert.deepStrictEqual(colored(t, probed), ['\\added[id=BH]{a}', '\\replaced{new}{old}']);
 });
+
+// Review round 2: rendering and hover.
+const { luminance, hoverMarkdown } = require('../../src/colors');
+test('luminance is WCAG relative luminance, from linearized sRGB (review B9)', () => {
+    assert.ok(Math.abs(luminance([0.376, 0.376, 0.376]) - 0.117) < 0.002);
+    assert.deepStrictEqual([luminance([0, 0, 0]), luminance([1, 1, 1])], [0, 1]);
+});
+test('text on a highlight or box keeps its color on dark themes (review B9)', () =>
+    assert.strictEqual(renderOptions({ color: [0, 0, 0], bg: [1, 1, 0] }, 0.15).color, '#000000'));
+test('hoverMarkdown: the command sits in a code span that its own backticks cannot close; no raw HTML from the source (review B13)', () => {
+    const md = hoverMarkdown('\\foo[``a`` <b>x</b>]{c}', { color: [1, 0, 0] }, '#ff0000', 'parser');
+    assert.match(md, /^``` \\foo\[``a`` <b>x<\/b>\]\{c\} ``` /);
+    assert.strictEqual((md.match(/<span/g) || []).length, 1); // the swatch only
+});
+test('hoverMarkdown: a lifted color says what is shown', () =>
+    assert.match(hoverMarkdown('\\ben', { color: [0, 0, 0.5] }, '#6b6bc0', 'probe'), /color #000080, shown as #6b6bc0 \(from the probe compile\)/));

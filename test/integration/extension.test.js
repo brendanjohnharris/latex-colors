@@ -177,4 +177,32 @@ suite('LaTeX Colors in VS Code', () => {
         assert.match(text, /#ff0000/);
         assert.match(text, /predicted/);
     });
+
+    test('markup that does not reach the PDF is muted; latexColors.muteMarkup.enabled turns it off', async () => {
+        await show(path.join(FIXTURES, 'textcolor-basic.tex'));
+        const muted = async pred => {
+            let m = null;
+            for (const t0 = Date.now(); Date.now() - t0 < 15000; await sleep(100)) { m = await vscode.commands.executeCommand('latexColors._muted'); if (m && pred(m)) break; }
+            return m;
+        };
+        assert.deepStrictEqual(await muted(m => m.length > 0),
+            ['\\textcolor{red}{', '}', '\\textcolor[rgb]{0,0.5,1}{', '}', '\\colorbox{yellow}{', '}']);
+        await set('muteMarkup.enabled', false);
+        assert.deepStrictEqual(await muted(m => m.length === 0), []);
+        await set('muteMarkup.enabled', undefined);
+    });
+
+    test('an unsaved edit to a file the root pulls in updates a chapter open beside it (review B12)', async () => {
+        const macros = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(FIXTURES, 'multi', 'macros.tex')), vscode.ViewColumn.One);
+        await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(FIXTURES, 'multi', 'chapters', 'one.tex')), vscode.ViewColumn.Two);
+        assert.strictEqual((await spansWhen(x => x.length > 0))[0]?.style.color, '#6ea0f9');
+        try {
+            await macros.edit(e => e.replace(new vscode.Range(0, 0, 0, 100), '\\definecolor{multicolor}{HTML}{FF0000}'));
+            assert.strictEqual((await spansWhen(x => x[0]?.style.color === '#ff0000'))[0]?.style.color, '#ff0000');
+        } finally {
+            await vscode.window.showTextDocument(macros.document, vscode.ViewColumn.One);
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        }
+    });
 });
