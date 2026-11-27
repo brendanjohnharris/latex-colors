@@ -49,9 +49,9 @@ jobs:
           awk -v v="$VERSION" 'index($0, "## " v " ") == 1 {on = 1; next} /^## / && on {exit} on' CHANGELOG.md > notes.md
           gh release create "v$VERSION" "latex-colors-$VERSION.vsix" --title "v$VERSION" --notes-file notes.md ${PRE:+--prerelease} \
             || gh release upload "v$VERSION" "latex-colors-$VERSION.vsix" --clobber # a rerun after a partial failure
-      - name: Visual Studio Marketplace # needs a Trusted Publishing policy for this repository and release.yml on the publisher
-        run: npx vsce publish ${{ steps.pkg.outputs.pre }} --skip-duplicate --oidc --packagePath "latex-colors-${{ steps.pkg.outputs.version }}.vsix"
       - name: Open VSX
         run: npx ovsx publish "latex-colors-${{ steps.pkg.outputs.version }}.vsix" --skip-duplicate # pre-release state comes from the package
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      - name: Visual Studio Marketplace # needs a Trusted Publishing policy for this repository and release.yml on the publisher
+        run: npx vsce publish ${{ steps.pkg.outputs.pre }} --skip-duplicate --oidc --packagePath "latex-colors-${{ steps.pkg.outputs.version }}.vsix"
