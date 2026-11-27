@@ -158,7 +158,7 @@ test('macros built on macros, in any order; cycles end', () => {
 \newcommand\ca[1]{\cb{#1}}\newcommand\cb[1]{\ca{#1}}
 \later{a} \todo{b} \ca{c}`;
     assert.deepStrictEqual(spanOf(t, '\\later{a}')?.style, RED);
-    assert.deepStrictEqual(spanOf(t, '\\todo{b}')?.style, { color: [1, 0, 0], bold: true });
+    assert.deepStrictEqual(spanOf(t, '\\todo{b}')?.style, { color: [1, 0, 0] }); // \\textbf{TODO:} does not cover #1 (review B7)
     assert.ok(!spanOf(t, '\\ca{c}'));
 });
 test('multi-argument macros color through the argument the body styles', () => {
@@ -176,7 +176,7 @@ test('environments whose begin code sets a color color their body, counting nest
     assert.ok(!extent(t, ' d'));
 });
 test('an unclosed colored environment stops at the next blank line', () =>
-    assert.deepStrictEqual(extent('\\newenvironment{redbox}[1]{\\textcolor{red}{#1}}{}\n\\begin{redbox}{x} typing\n\nplain', 'typing')?.[0],
+    assert.deepStrictEqual(extent('\\newenvironment{redbox}[1]{\\color{red}#1}{}\n\\begin{redbox}{x} typing\n\nplain', 'typing')?.[0],
         '\\begin{redbox}{x} typing'));
 test('ulem \\dashuline and \\dotuline', () => {
     const t = '\\newcommand\\dsh[1]{\\dashuline{#1}}\\newcommand\\dtt[1]{\\dotuline{#1}}\n\\dsh{a} \\dtt{b}';
@@ -238,3 +238,50 @@ test('a decoration inside a colored span keeps both', () => {
 });
 test('a user definition replaces the built-in style', () =>
     assert.ok(!spanOf('\\renewcommand\\hl[1]{#1}\\hl{a}', '\\hl{a}')));
+
+// Review round 2: parser.
+const styleOf = (t, s) => scan(t).find(x => t.slice(x.start, x.end).includes(s))?.style;
+test('font-only macros are not colors (review B4)', () => {
+    assert.deepStrictEqual(colored('\\newcommand{\\vect}[1]{\\textbf{#1}}\\newcommand{\\sp}[1]{\\emph{#1}}\\vect{x} \\sp{y}'), []);
+    assert.deepStrictEqual(styleOf('\\newcommand\\bx[1]{\\textcolor{red}{\\textbf{#1}}}\\bx{z}', 'z}'), { color: [1, 0, 0], bold: true });
+});
+test('an argument outside every styled part of the body is not colored (review B4)', () =>
+    assert.ok(!scan('\\newcommand{\\flag}[1]{\\textcolor{red}{[FLAG]} #1}\\flag{x}').some(s => s.start > 40)));
+test('an environment colors its body only if its begin code leaves a color open (review B4)', () => {
+    assert.ok(!styleOf('\\newenvironment{rem}[1]{\\textbf{#1:}}{}\\begin{rem}{A} body\\end{rem}', 'body'));
+    assert.ok(!styleOf('\\newenvironment{rb}[1]{\\textcolor{red}{#1}}{}\\begin{rb}{A} body\\end{rb}', 'body'));
+    assert.deepStrictEqual(styleOf('\\newenvironment{rc}[1]{\\color{red}#1:}{}\\begin{rc}{A} body\\end{rc}', 'body'), { color: [1, 0, 0] });
+});
+test('the style at the target argument: inner macros win, fixed text does not bleed, per-argument styles (review B7)', () => {
+    assert.deepStrictEqual(styleOf('\\newcommand{\\inner}[1]{\\textcolor{red}{#1}}\\newcommand{\\outerc}[1]{\\textcolor{blue}{\\inner{#1}}}\\outerc{x}', '\\outerc{x}'), { color: [1, 0, 0] });
+    assert.deepStrictEqual(styleOf('\\newcommand\\early[1]{\\textcolor{red}{#1}}\\newcommand\\todo[1]{\\early{\\textbf{TODO:} #1}}\\todo{x}', '\\todo{x}'), { color: [1, 0, 0] });
+    assert.deepStrictEqual(styleOf('\\newcommand{\\chg}[2]{\\textcolor{red}{\\sout{#1}}\\textcolor{blue}{#2}}\\chg{old}{new}', 'new}'), { color: [0, 0, 1] });
+});
+test('a star after a macro without one is its argument (review B5)', () =>
+    assert.ok(!scan('\\newcommand\\ben[1]{\\textcolor{red}{#1}}\n\\ben*{text}').some(s => s.start > 38)));
+test('% inside \\url, \\href, \\nolinkurl, \\path, \\lstinline, \\mintinline and luacode is not a comment (review B6)', () => {
+    const t = '{\\color{red} See \\url{https://e.org/%C3%89} here} plain.\nMore.';
+    assert.deepStrictEqual(colored(t), ['\\color{red} See \\url{https://e.org/%C3%89} here']);
+    assert.deepStrictEqual(colored('\\href{https://a.b/%20}{\\textcolor{blue}{link}} x'), ['\\textcolor{blue}{link}']);
+    for (const s of ['\\nolinkurl{a%b}', '\\path{a%b}', '\\lstinline|a%{|', '\\lstinline[language=TeX]{a%b}', '\\mintinline{tex}{a%b}', '\\mintinline{tex}|a%{|',
+        '\\begin{luacode}\nx = 5 % 2\n\\end{luacode}', '\\begin{luacode*}\nx = 5 % 2\n\\end{luacode*}'])
+        assert.deepStrictEqual(colored(`{\\color{red} ${s} after} plain`).map(x => x.endsWith('after')), [true], s);
+});
+test('xcolor expressions as xcolor evaluates them (review B8)', () => {
+    for (const [e, want] of [['--red', [1, 0, 0]], ['red!50!-blue', [1, 0.5, 0]], ['-red!50!blue', [0.5, 1, 0.5]], ['--red!50!blue', [0.5, 0, 0.5]],
+        ['red!150', [1, 0, 0]], ['red!-20', [1, 1, 1]], ['red!50!blue!50', [0.75, 0.5, 0.75]]])
+        assert.deepStrictEqual(parseExpr(e, BASE), want, e);
+    assert.strictEqual(parseExpr('red!', BASE), null); // mid-typing: no white flash
+    assert.strictEqual(parseExpr('red!50!', BASE), null);
+});
+test('\\def with a space before its parameters; \\gdef, \\edef and \\xdef (review I2)', () => {
+    for (const d of ['def', 'gdef', 'edef', 'xdef'])
+        assert.deepStrictEqual(styleOf(`\\${d}\\foo #1{\\textcolor{red}{#1}}\\foo{x}`, '\\foo{x}'), { color: [1, 0, 0] }, d);
+});
+test('a repeated xcolor option moves to its latest position (review I2)', () =>
+    close(colorIn('\\documentclass[svgnames]{article}\\PassOptionsToPackage{dvipsnames}{xcolor}\\usepackage[svgnames]{xcolor}\\textcolor{Maroon}{x}', 'x}'), [0.5, 0, 0]));
+test('many ungrouped \\color switches scan in linear time', () => {
+    const t = Array.from({ length: 4000 }, (_, k) => `\\color{red} para ${k} with some words in it.\n`).join('');
+    const t0 = performance.now(); scan(t); scan(t);
+    assert.ok((performance.now() - t0) / 2 < 60, `${((performance.now() - t0) / 2).toFixed(0)} ms`);
+});

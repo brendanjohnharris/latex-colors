@@ -23,8 +23,8 @@ function generated() {
     return pre + paras.join('') + '\\end{document}\n';
 }
 
-function median(text) { // after 3 untimed runs: the editor rescans on every edit, so its code is warm
-    for (let k = 0; k < 3; k++) { scan(text); marks(text); }
+function median(text) { // after 8 untimed runs (the JIT settles within about 7): the editor rescans on every edit, so its code is warm
+    for (let k = 0; k < 8; k++) { scan(text); marks(text); }
     const ms = [];
     for (let k = 0; k < 5; k++) { const t0 = performance.now(); scan(text); marks(text); ms.push(performance.now() - t0); }
     return ms.sort((a, b) => a - b)[2];
