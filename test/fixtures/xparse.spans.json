@@ -24,6 +24,14 @@
     }
   },
   {
+    "text": "\\hl{#2}",
+    "start": 192,
+    "end": 199,
+    "style": {
+      "bg": "#ffff00"
+    }
+  },
+  {
     "text": "\\textcolor{red}{#1}",
     "start": 229,
     "end": 248,

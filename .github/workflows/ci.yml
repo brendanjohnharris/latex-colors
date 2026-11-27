@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vscode: [stable, insiders]
+        vscode: ['1.90.0', stable, insiders] # the minimum in package.json engines, and the newest
     steps:
       - uses: actions/checkout@v7
         with:

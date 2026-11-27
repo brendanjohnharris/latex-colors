@@ -9,7 +9,7 @@ const TOKENS = ['\\textcolor{red}{', '\\color{blue}', '{', '}', '%', '\\%', '\\{
     '\\definecolor{c}{RGB}{1,2,3}', '\\newcommand{\\x}[1]{\\textcolor{c}{#1}}', '\\x{', '[[', ']]', 'xx', '((', '))', '....',
     '\\verb|x|', '\\begin{verbatim}', '\\end{verbatim}', '\\begin{itemize}', '\\end{itemize}', '\\csname x\\endcsname',
     '\\NewDocumentCommand{\\y}{om}{\\textcolor{red}{#2}}', '\\y[', '\\def\\z#1{\\x{#1}}', '\\z{', '\\let\\w\\x', '\\w{',
-    '\\newenvironment{e}{\\color{red}}{}', '\\begin{e}', '\\end{e}'];
+    '\\newenvironment{e}{\\color{red}}{}', '\\begin{e}', '\\end{e}', '\\hl{', '\\sout{', '\\sethlcolor{red}'];
 
 function mulberry32(a) {
     return () => {

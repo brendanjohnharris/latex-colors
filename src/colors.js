@@ -122,6 +122,11 @@ const NAME = /\\([A-Za-z@]+)/y;
 const DEFINING = /\\(definecolor|providecolor|definecolorset|colorlet|newcommand|renewcommand|providecommand|DeclareRobustCommand|NewDocumentCommand|RenewDocumentCommand|ProvideDocumentCommand|DeclareDocumentCommand|def|let|newenvironment|renewenvironment)(?![A-Za-z@])\*?/g;
 const DEFINERS = new Set(['newcommand', 'renewcommand', 'providecommand', 'DeclareRobustCommand']);
 const XPARSE = new Set(['NewDocumentCommand', 'RenewDocumentCommand', 'ProvideDocumentCommand', 'DeclareDocumentCommand']);
+// soul and ulem commands, styled wherever they are used; a definition in the document replaces one.
+const BUILTINS = Object.fromEntries(Object.entries({
+    hl: { bg: HL_DEFAULT }, texthl: { bg: HL_DEFAULT }, st: { deco: 'line-through' }, sout: { deco: 'line-through' }, xout: { deco: 'line-through' },
+    uwave: { deco: 'underline wavy' }, ul: { deco: 'underline' }, uline: { deco: 'underline' }, dashuline: { deco: 'underline dashed' }, dotuline: { deco: 'underline dotted' },
+}).map(([n, style]) => [n, { style, spec: ['m'], target: 0, builtin: true }]));
 const ARG_STYLERS = new Set(['hl', 'texthl', 'sout', 'st', 'xout', 'uwave', 'uline', 'ul', 'underline', 'dashuline', 'dotuline', 'textbf', 'textit', 'emph']);
 
 // Style implied by a macro body (with the styles of macros it calls), or null if it changes nothing visible.
@@ -141,8 +146,9 @@ function bodyStyle(body, table, macros) {
     else if (/\\(?:uline|ul|underline)\b/.test(body)) s.deco = 'underline';
     if (/\\(?:textbf|bfseries)\b/.test(body)) s.bold = true;
     if (/\\(?:textit|emph|itshape)\b/.test(body)) s.italic = true;
-    for (const k of Object.keys(s)) if (s[k] == null) delete s[k];
-    return Object.keys(s).length ? s : null;
+    const out = {}; // fixed key order: equal styles share one decoration type
+    for (const k of ['color', 'bg', 'deco', 'bold', 'italic']) if (s[k] != null) out[k] = s[k];
+    return Object.keys(out).length ? out : null;
 }
 
 // End of a macro's arguments up to spec[target] at a use site; -1 if a mandatory one is missing.
@@ -257,10 +263,10 @@ function definitions(code) {
             if (begin) envDefs.push([a.inner.trim(), begin.inner]);
         }
     }
-    let macros = Object.create(null);
+    let macros = Object.assign(Object.create(null), BUILTINS);
     for (let pass = 0; pass < 5; pass++) { // fixed point: macros that call macros
-        const next = Object.create(null);
-        for (const n of Object.keys(defs)) { const d = analyze(defs[n], table, macros); if (d) next[n] = d; }
+        const next = Object.assign(Object.create(null), BUILTINS);
+        for (const n of Object.keys(defs)) { const d = analyze(defs[n], table, macros); if (d) next[n] = d; else delete next[n]; }
         const same = JSON.stringify(next) === JSON.stringify(macros);
         macros = next;
         if (same) break;
@@ -307,7 +313,8 @@ function spans(text, probed = undefined, prelude = '') {
         return memo.get(k);
     };
     // Only commands that make or affect a span; a regex over these names skips the rest of the text quickly.
-    const names = ['textcolor', 'colorbox', 'color', 'begin', 'def', 'let', ...DEFINERS, ...XPARSE, ...Object.keys(macros), ...Object.keys(probed?.macros ?? {})];
+    const names = ['textcolor', 'colorbox', 'color', 'begin', 'sethlcolor', 'def', 'let', ...DEFINERS, ...XPARSE, ...Object.keys(macros), ...Object.keys(probed?.macros ?? {})];
+    const hlColors = []; // [rgb, end of the \sethlcolor's group]
     const re = new RegExp(String.raw`\\(${[...new Set(names)].filter(n => /^[A-Za-z@]+$/.test(n)).join('|')})(?![A-Za-z@])\*?`, 'g');
     for (let m; (m = re.exec(code));) {
         if (escaped(code, m.index)) continue;
@@ -322,13 +329,19 @@ function spans(text, probed = undefined, prelude = '') {
         } else if (name === 'color') {
             const o = readOpt(code, i), a = readArg(code, o.end), v = a && colorFor(o.inner, a.inner);
             if (v) out.push({ start: m.index, end: switchEnd(code, a.end), style: { color: v[0] }, whatEnd: a.end, origin: v[1] });
+        } else if (name === 'sethlcolor') {
+            const a = readArg(code, i), v = a && colorFor(null, a.inner);
+            if (v) hlColors.push([v[0], switchEnd(code, a.end)]);
         } else if (name === 'begin') {
             const a = readArg(code, i), env = a && a.inner.trim();
             if (env && own(envs, env)) out.push({ start: m.index, end: envEnd(code, a.end, env), style: envs[env], whatEnd: a.end, origin: 'parser' });
         } else if (own(macros, name) || own(probed?.macros, name)) {
             const d = own(macros, name) || { style: {}, spec: ['m'], target: 0 }, p = own(probed?.macros, name);
             const end = argsEnd(code, i, d.spec, d.target);
-            if (end >= 0) out.push({ start: m.index, end, style: p ? { ...d.style, color: p } : d.style, whatEnd: i, origin: p ? 'probe' : 'parser' });
+            let style = p ? { ...d.style, color: p } : d.style;
+            if (d.builtin && d.style.bg) // the latest \sethlcolor whose group is still open
+                for (let k = hlColors.length - 1; k >= 0; k--) if (m.index < hlColors[k][1]) { style = { ...style, bg: hlColors[k][0] }; break; }
+            if (end >= 0) out.push({ start: m.index, end, style, whatEnd: i, origin: p ? 'probe' : 'parser' });
         }
     }
     return out;

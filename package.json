@@ -31,7 +31,7 @@
         "url": "https://github.com/brendanjohnharris/latex-colors/issues"
     },
     "engines": {
-        "vscode": "^1.145.0"
+        "vscode": "^1.90.0"
     },
     "capabilities": {
         "untrustedWorkspaces": {
@@ -221,7 +221,7 @@
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
-        "@types/vscode": "1.145.0",
+        "@types/vscode": "1.90.0",
         "@vscode/test-cli": "^0.0.15",
         "@vscode/test-electron": "^3.1.0",
         "@vscode/vsce": "4.1.1",

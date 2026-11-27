@@ -1,5 +1,37 @@
 [
   {
+    "text": "\\sout{#1}",
+    "start": 21,
+    "end": 30,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\uwave{#1}",
+    "start": 53,
+    "end": 63,
+    "style": {
+      "deco": "underline wavy"
+    }
+  },
+  {
+    "text": "\\uline{#1}",
+    "start": 86,
+    "end": 96,
+    "style": {
+      "deco": "underline"
+    }
+  },
+  {
+    "text": "\\xout{#1}",
+    "start": 118,
+    "end": 127,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
     "text": "\\del{struck}",
     "start": 129,
     "end": 141,

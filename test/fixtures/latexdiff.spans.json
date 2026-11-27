@@ -1,18 +1,36 @@
 [
   {
-    "text": "\\color{blue}\\uwave{#1}",
+    "text": "\\color{blue}",
     "start": 241,
-    "end": 263,
+    "end": 253,
     "style": {
       "color": "#0000ff"
     }
   },
   {
-    "text": "\\color{red}\\sout{#1}",
+    "text": "\\uwave{#1}",
+    "start": 253,
+    "end": 263,
+    "style": {
+      "color": "#0000ff",
+      "deco": "underline wavy"
+    }
+  },
+  {
+    "text": "\\color{red}",
     "start": 317,
-    "end": 337,
+    "end": 328,
     "style": {
       "color": "#ff0000"
+    }
+  },
+  {
+    "text": "\\sout{#1}",
+    "start": 328,
+    "end": 337,
+    "style": {
+      "color": "#ff0000",
+      "deco": "line-through"
     }
   },
   {

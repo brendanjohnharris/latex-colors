@@ -8,6 +8,8 @@ All notable changes are listed here, in the form of [Keep a Changelog](https://k
 - Marketplace and Open VSX listing: publisher `brendanjohnharris`, icon, categories and keywords; `examples/demo.tex` shows every feature.
 - Release workflow: a version tag tests, packages and publishes to the Marketplace and Open VSX, and creates a GitHub Release with the `.vsix`; odd minor versions publish as pre-releases.
 - Local class files (`\documentclass`, `\LoadClass`) are read for definitions, probed and watched like local packages.
+- soul and ulem commands used directly in the text are styled: `\hl` and `\texthl` (in the color of the latest `\sethlcolor` in scope), `\st`, `\sout`, `\xout`, `\uwave`, `\ul`, `\uline`, `\dashuline` and `\dotuline`.
+- Requires VS Code 1.90 or later (was 1.145), so editors built on older VS Code releases, such as Cursor and VSCodium, can install it; CI tests 1.90.0, stable and Insiders.
 
 ### Changed
 - The probe runs inside its temporary directory, with the root's folder on `TEXINPUTS`, so files a preamble writes by relative path (including Lua's `io.open` under lualatex) no longer land next to the document.

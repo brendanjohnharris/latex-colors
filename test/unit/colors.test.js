@@ -218,3 +218,23 @@ test('renderOptions: a background alone gets readable text; decorations and font
         { backgroundColor: '#ffff00', color: '#000000', textDecoration: 'line-through', fontWeight: 'bold', fontStyle: 'italic', overviewRulerColor: '#000000' });
     assert.strictEqual(renderOptions({ bg: [0, 0, 0.3] }, null).color, '#ffffff');
 });
+
+// soul and ulem commands used directly in the text.
+test('soul and ulem commands in the text are styled', () => {
+    const t = '\\hl{a} \\texthl{b} \\st{c} \\sout{d} \\xout{e} \\uwave{f} \\ul{g} \\uline{h} \\dashuline{i} \\dotuline{j}';
+    assert.deepStrictEqual(scan(t).map(s => [t.slice(s.start, s.end), s.style]), [
+        ['\\hl{a}', { bg: [1, 1, 0] }], ['\\texthl{b}', { bg: [1, 1, 0] }], ['\\st{c}', { deco: 'line-through' }],
+        ['\\sout{d}', { deco: 'line-through' }], ['\\xout{e}', { deco: 'line-through' }], ['\\uwave{f}', { deco: 'underline wavy' }],
+        ['\\ul{g}', { deco: 'underline' }], ['\\uline{h}', { deco: 'underline' }], ['\\dashuline{i}', { deco: 'underline dashed' }],
+        ['\\dotuline{j}', { deco: 'underline dotted' }]]);
+});
+test('\\sethlcolor colors the \\hl calls after it, within its group', () => {
+    const t = '{\\sethlcolor{cyan}\\hl{a}} \\hl{b} \\sethlcolor{red!50}\\hl{c}';
+    assert.deepStrictEqual(['\\hl{a}', '\\hl{b}', '\\hl{c}'].map(s => spanOf(t, s)?.style), [{ bg: [0, 1, 1] }, { bg: [1, 1, 0] }, { bg: [1, 0.5, 0.5] }]);
+});
+test('a decoration inside a colored span keeps both', () => {
+    const t = '\\textcolor{blue}{x \\sout{y} z}';
+    assert.deepStrictEqual(scan(t).find(s => t.slice(s.start, s.end) === '\\sout{y}')?.style, { color: [0, 0, 1], deco: 'line-through' });
+});
+test('a user definition replaces the built-in style', () =>
+    assert.ok(!spanOf('\\renewcommand\\hl[1]{#1}\\hl{a}', '\\hl{a}')));

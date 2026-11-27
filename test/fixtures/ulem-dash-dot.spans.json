@@ -1,5 +1,21 @@
 [
   {
+    "text": "\\dashuline{#1}",
+    "start": 19,
+    "end": 33,
+    "style": {
+      "deco": "underline dashed"
+    }
+  },
+  {
+    "text": "\\dotuline{#1}",
+    "start": 54,
+    "end": 67,
+    "style": {
+      "deco": "underline dotted"
+    }
+  },
+  {
     "text": "\\dsh{dashed}",
     "start": 69,
     "end": 81,

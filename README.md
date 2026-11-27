@@ -5,6 +5,7 @@ A VS Code extension that colors LaTeX source the way xcolor colors the PDF, and 
 ## Colors
 
 - `\textcolor{c}{...}`, `{\color{c} ...}` (to the end of the group or environment) and `\colorbox{c}{...}`.
+- soul and ulem commands in the text: `\hl` (with `\sethlcolor`), `\st`, `\ul`, `\sout`, `\xout`, `\uwave`, `\uline`, `\dashuline` and `\dotuline`.
 - Macros defined with `\newcommand`, `\renewcommand`, `\providecommand`, `\DeclareRobustCommand`, xparse's `\NewDocumentCommand` and relatives (argument types `m`, `o`, `O{...}`, `s`, `t`), `\def` (undelimited parameters) or `\let`, whose body uses those commands, soul's `\hl` (with `\sethlcolor`), ulem's `\sout`, `\uwave`, `\uline`, `\dashuline` and `\dotuline`, or another such macro. A comment macro such as `\providecommand{\ben}[1]{\textcolor{myorange}{[#1]}}` colors every `\ben{...}`; a macro with several arguments colors through the argument its body styles.
 - Environments defined with `\newenvironment` whose begin code sets a color.
 - Colors: xcolor's base names; the `dvipsnames`, `svgnames` and `x11names` sets when xcolor is loaded with those options (in `\usepackage`, `\PassOptionsToPackage` or `\documentclass`); and every `\definecolor`, `\providecolor`, `\colorlet` and `\definecolorset` (models `rgb`, `RGB`, `HTML`, `cmyk`, `cmy`, `gray`, `hsb`, `Hsb`, `HSB`, `named`), including expressions such as `red!50!blue`.
@@ -55,7 +56,7 @@ The colors above are predicted from the source on every keystroke. When a root f
 
 Hovering over colored text shows the command or expression that colored it, its value, and whether the value was predicted or came from the probe.
 
-Requires VS Code 1.145 or later.
+Requires VS Code 1.90 or later, or an editor built on it (Cursor, VSCodium, Windsurf) through Open VSX.
 
 ## Install
 

@@ -1,0 +1,115 @@
+[
+  {
+    "text": "\\hl{highlighted}",
+    "start": 75,
+    "end": 91,
+    "style": {
+      "bg": "#ffff00"
+    }
+  },
+  {
+    "text": "\\st{struck}",
+    "start": 93,
+    "end": 104,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\ul{underlined}",
+    "start": 106,
+    "end": 121,
+    "style": {
+      "deco": "underline"
+    }
+  },
+  {
+    "text": "\\sout{out}",
+    "start": 123,
+    "end": 133,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\xout{crossed}",
+    "start": 135,
+    "end": 149,
+    "style": {
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": "\\uwave{wavy}",
+    "start": 151,
+    "end": 163,
+    "style": {
+      "deco": "underline wavy"
+    }
+  },
+  {
+    "text": "\\uline{lined}",
+    "start": 165,
+    "end": 178,
+    "style": {
+      "deco": "underline"
+    }
+  },
+  {
+    "text": "\\dashuline{dashed}",
+    "start": 180,
+    "end": 198,
+    "style": {
+      "deco": "underline dashed"
+    }
+  },
+  {
+    "text": "\\dotuline{dotted}",
+    "start": 200,
+    "end": 217,
+    "style": {
+      "deco": "underline dotted"
+    }
+  },
+  {
+    "text": "\\hl{soft highlight}",
+    "start": 237,
+    "end": 256,
+    "style": {
+      "bg": "#ffb3b3"
+    }
+  },
+  {
+    "text": "\\hl{default again}",
+    "start": 263,
+    "end": 281,
+    "style": {
+      "bg": "#ffff00"
+    }
+  },
+  {
+    "text": "\\textcolor{blue}{blue with ",
+    "start": 283,
+    "end": 310,
+    "style": {
+      "color": "#0000ff"
+    }
+  },
+  {
+    "text": "\\sout{struck}",
+    "start": 310,
+    "end": 323,
+    "style": {
+      "color": "#0000ff",
+      "deco": "line-through"
+    }
+  },
+  {
+    "text": " inside}",
+    "start": 323,
+    "end": 331,
+    "style": {
+      "color": "#0000ff"
+    }
+  }
+]

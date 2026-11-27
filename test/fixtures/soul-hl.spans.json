@@ -1,5 +1,29 @@
 [
   {
+    "text": "\\hl{#1}",
+    "start": 21,
+    "end": 28,
+    "style": {
+      "bg": "#ffff00"
+    }
+  },
+  {
+    "text": "\\hl{#1}",
+    "start": 69,
+    "end": 76,
+    "style": {
+      "bg": "#00ffff"
+    }
+  },
+  {
+    "text": "\\texthl{#1}",
+    "start": 100,
+    "end": 111,
+    "style": {
+      "bg": "#ffff00"
+    }
+  },
+  {
     "text": "\\hla{default yellow}",
     "start": 113,
     "end": 133,
