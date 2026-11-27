@@ -2,6 +2,30 @@
 
 All notable changes are listed here, in the form of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.9.1 - 2026-11-27 (pre-release)
+
+### Added
+- Markup that does not reach the PDF is faded, keeping its color: command names, braces, alignment tabs, optional arguments, and arguments that never print (labels, references, citations, file names, sizes, color names, definitions). Settings `latexColors.muteMarkup.enabled` (default `true`) and `latexColors.muteMarkup.opacity`.
+- The probe handles commands of the `changes` package and other commands with several arguments; it skips math, font and box commands, and reserves its candidate limit for color expressions first.
+- `\gdef`, `\edef`, `\xdef`, and `\def` with a space before its parameters.
+
+### Changed
+- A macro takes the style at the argument its body styles: an inner macro's color wins over an outer one, fixed text such as `\textbf{TODO:}` no longer makes the whole macro bold, and each argument of a multi-argument macro has its own style. Macros that only change the font are no longer decorated.
+- An environment colors its body only when its begin code leaves a color switched on.
+- A macro the probe finds leaves the text color unchanged loses its predicted color (a highlight or line stays).
+- `latexColors.minLuminance` uses WCAG relative luminance; the default is now 0.15. Text on its own highlight or box keeps its color on dark themes.
+- Editorial marks: `xx...xx` wraps text ending in punctuation, math or commands; `[[...]]` and `((...))` stay within a paragraph; marks inside LaTeX comments, `\verb`, verbatim environments and Markdown code are ignored; duplicate pattern names are rejected.
+
+### Fixed
+- `%` inside `\url`, `\href`, `\nolinkurl`, `\path`, `\lstinline`, `\mintinline` and `luacode` no longer starts a comment.
+- xcolor expressions: `red!` and `red!50!` while typing no longer turn text white; repeated and per-color `-` signs, and percentages outside 0 to 100, follow xcolor.
+- A star after a macro defined without one is its argument, as in TeX.
+- A repeated xcolor option takes its latest position.
+- Many `\color` switches outside any group scan in linear time.
+- The hover cannot be broken by backticks or HTML in the source, reuses the decorated spans, and reports the color shown on dark themes.
+- An unsaved edit to a file a root pulls in updates its other open files; saved `.sty` and `.cls` files refresh their documents; saves and file events no longer prepare documents twice; closed documents and unused decoration types are released.
+- Settings that apply per document are `resource` scoped.
+
 ## 0.9.0 - 2026-11-27 (pre-release)
 
 ### Added

@@ -305,8 +305,8 @@ function groupsOf(t) {
 // End of the scope of a \color switch starting at i: the end of the enclosing group or environment;
 // the next blank line if that group never closes (mid-typing); else the next unmatched close or the document end.
 function switchEnd(t, i) {
-    for (let j = i, d = 0, n = Math.min(t.length, i + 4096); j < n; j++) // usually the group closes nearby
-        if (marked(t, j) && (d += delta(t, j)) < 0) return j;
+    if (groupCache.t !== t) // usually the group closes nearby; once the group map exists, it answers directly
+        for (let j = i, d = 0, n = Math.min(t.length, i + 4096); j < n; j++) if (marked(t, j) && (d += delta(t, j)) < 0) return j;
     const g = groupsOf(t);
     if (g.k > 0 && g.pos[g.k - 1] >= i) { g.k = 0; g.open = []; }
     for (; g.k < g.pos.length && g.pos[g.k] < i; g.k++) if (g.d[g.k] > 0) g.open.push(g.pos[g.k]); else g.open.pop();

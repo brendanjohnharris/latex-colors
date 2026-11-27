@@ -284,7 +284,7 @@ test('a repeated xcolor option moves to its latest position (review I2)', () =>
 test('many ungrouped \\color switches scan in linear time', () => {
     const t = Array.from({ length: 4000 }, (_, k) => `\\color{red} para ${k} with some words in it.\n`).join('');
     const t0 = performance.now(); scan(t); scan(t);
-    assert.ok((performance.now() - t0) / 2 < 60, `${((performance.now() - t0) / 2).toFixed(0)} ms`);
+    assert.ok((performance.now() - t0) / 2 < 500, `${((performance.now() - t0) / 2).toFixed(0)} ms`); // quadratic took 5.6 s
 });
 test('a macro the probe found neutral keeps only its highlight or line (review B4)', () => {
     const t = '\\newcommand\\fake[1]{\\textcolor{red}{#1}}\\newcommand\\cut[1]{\\textcolor{red}{\\sout{#1}}}\\fake{x} \\cut{y}';

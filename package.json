@@ -2,7 +2,7 @@
     "name": "latex-colors",
     "displayName": "LaTeX Colors",
     "description": "Colors LaTeX source the way xcolor colors the PDF, and highlights editorial marks in LaTeX, Markdown and plain text.",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "publisher": "brendanjohnharris",
     "license": "MIT",
     "icon": "images/icon.png",

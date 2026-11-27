@@ -1,6 +1,6 @@
 # Roadmap to a Marketplace release
 
-**State at v0.9.0 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox`, colored environments and macros built on them (`\newcommand` and relatives, xparse, `\def`, `\let`, macros on macros, several arguments), with definitions from every file of a multi-file document, the xcolor name sets and models, and exact colors from a probe compile after each save; highlights editorial marks (four built in, or your own patterns); settings, commands and a hover; unit, fixture, fuzz and VS Code integration tests with CI; a 1 MB document scans in about 15 ms; listing ready for publisher `brendanjohnharris` (not yet created), with a release workflow for the Marketplace and Open VSX; requires VS Code 1.90. Each milestone below ends in a tagged release and lists what must hold before it is called done.
+**State at v0.9.1 (2026-11-27).** Colors `\textcolor`, `\color`, `\colorbox`, colored environments and macros built on them (`\newcommand` and relatives, xparse, `\def`, `\let`, macros on macros, several arguments), with definitions from every file of a multi-file document, the xcolor name sets and models, and exact colors from a probe compile after each save; highlights editorial marks (four built in, or your own patterns); fades markup that does not reach the PDF; settings, commands and a hover; unit, fixture, fuzz and VS Code integration tests with CI; a 1 MB document scans in about 15 ms; published as a pre-release on the Marketplace and Open VSX by a tag-triggered release workflow; requires VS Code 1.90. Each milestone below ends in a tagged release and lists what must hold before it is called done.
 
 ## 1. Tests and CI (v0.3)
 
@@ -41,8 +41,8 @@ The probe runs the engine directly, not `latexmk`, since one pass is enough.
 ## 3. Parser completeness (v0.5)
 
 **Multi-file documents**
-- Find the root: a `% !TEX root = ...` comment, else the open file if it contains `\documentclass`, else a `latexColors.rootFile` setting, else the workspace `.tex` file that `\input`s or `\include`s the open one.
-- Read definitions from the root and every local file it pulls in (`\input`, `\include`, `\subfile`, and `\usepackage`/`\RequirePackage` of a `.sty` in the workspace), through `workspace.fs` so it also works on vscode.dev.
+- Find the root: a `% !TEX root = ...` comment, else the open file if it contains `\documentclass`, else the workspace `.tex` file that `\input`s or `\include`s the open one.
+- Read definitions from the root and every local file it pulls in (`\input`, `\include`, `\subfile`, and `\usepackage`/`\RequirePackage` of a `.sty` in the workspace), through `workspace.fs`.
 - Cache definitions per root; invalidate with a `FileSystemWatcher` on those files.
 
 **Color names and models** (predictions only; the probe gives exact values)
@@ -78,7 +78,6 @@ The probe runs the engine directly, not `latexmk`, since one pass is enough.
 - `latexColors.marks.languages` (default `latex`, `markdown`, `plaintext`) and `latexColors.minLuminance` next to `liftDarkColors`.
 - Commands: Toggle colors, Toggle marks, Rescan.
 - Hover over a colored span to show its color expression and value.
-- A `browser` entry point so the extension runs on vscode.dev and github.dev.
 
 **Done when** every setting is in `package.json` with a description and covered by a test.
 
@@ -102,4 +101,7 @@ The probe runs the engine directly, not `latexmk`, since one pass is enough.
 
 - Issue templates (bug: a minimal `.tex` and a screenshot).
 - Semantic versioning: new syntax is a minor release, behavior changes to existing syntax are major.
-- Packages that color text from inside their own `.sty`, invisible to a parser of the document: `changes` (`\added`, `\deleted`, `\replaced`, colored per `\definechangesauthor`), `todonotes` (`\todo[color=...]`), `fixme`. Each needs built-in knowledge of the package; add one when someone asks.
+- A `browser` entry point so the parser, marks and faded markup run on vscode.dev and github.dev (the probe needs a local TeX engine).
+- A `latexColors.rootFile` setting, if a project's root cannot be found from magic comments, `\documentclass` or the workspace.
+- Per-author colors of the `changes` package (`\added[id=BH]`): the probe currently compiles each command without its optional argument.
+- `todonotes` (`\todo[color=...]`) and `fixme`, which color a box or note rather than the text: each needs built-in knowledge of the package; add one when someone asks.
