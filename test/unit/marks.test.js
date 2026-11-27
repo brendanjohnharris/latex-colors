@@ -39,3 +39,30 @@ test('the default of latexColors.marks.patterns is the built-in marks', () => {
 });
 test('latexColors.marks.patterns is restricted in untrusted workspaces (a hostile regex could stall the editor)', () =>
     assert.ok(pkg.capabilities.untrustedWorkspaces.restrictedConfigurations.includes('latexColors.marks.patterns')));
+
+// Review round 2.
+const { markable } = require('../../src/marks');
+test('rephrase marks wrap text ending in punctuation, math, commands and digits (review B1)', () => {
+    for (const [t, want] of [
+        ['xxrephrase this.xx', ['xxrephrase this.xx']], ['xxrephrase?xx', ['xxrephrase?xx']], ['xx\\cref{fig:1}xx', ['xx\\cref{fig:1}xx']],
+        ['xx$a + b$xx', ['xx$a + b$xx']], ['xxN = 5xx and M = xxx', ['xxN = 5xx', 'xxx']], ['N = xxx and xxN = 5xx', ['xxx', 'xxN = 5xx']],
+        ['xxx---xxx', ['xxx', 'xxx']]])
+        assert.deepStrictEqual(mk(t).map(m => m[1]), want, t);
+});
+test('note and rewrite marks stay within a paragraph and need their own closing pair (review B2)', () => {
+    assert.deepStrictEqual(mk('$((a + b) c = 0$ text\nmore $(d + (e + f)) = 1$'), []);
+    assert.deepStrictEqual(mk('[[a, b] + c] text [d + [e, f]]'), []);
+    assert.deepStrictEqual(mk('[[a\n\nb]] ((c\n  \nd))'), []);
+    assert.deepStrictEqual(mk('[[redo\nthis]] ((why?))').map(m => m[1]), ['[[redo\nthis]]', '((why?))']);
+});
+test('markable: LaTeX comments, \\verb and verbatim environments; Markdown code; offsets kept', () => {
+    const tex = '% [[old]]\n\\verb|((v))| [[live]]\n\\begin{verbatim}\nx[[1]]\n\\end{verbatim}';
+    assert.deepStrictEqual(marks(markable(tex, 'latex')).map(m => tex.slice(m.start, m.end)), ['[[live]]']);
+    const md = 'a `x[[1]]` b\n```julia\ny[[2]]\n```\n~~~\n((z))\n~~~\n[[keep]]';
+    assert.deepStrictEqual(marks(markable(md, 'markdown')).map(m => md.slice(m.start, m.end)), ['[[keep]]']);
+    assert.strictEqual(markable('[[p]] % c', 'plaintext'), '[[p]] % c');
+});
+test('compilePatterns: a duplicate name is reported and skipped', () => {
+    const r = compilePatterns([{ name: 'a', regex: 'x', color: '#000000' }, { name: 'a', regex: 'y', color: '#000000' }]);
+    assert.deepStrictEqual([r.patterns.length, r.errors], [1, ['a: duplicate name']]);
+});

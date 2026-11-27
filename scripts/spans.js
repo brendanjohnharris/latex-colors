@@ -3,10 +3,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { scan, readable } = require('../src/colors');
-const { marks } = require('../src/marks');
+const { marks, markable } = require('../src/marks');
 
 // Colors (for .tex only, as in the extension) then marks.
-const snapshot = (text, ext = '.tex') => readable(text, ext === '.tex' ? scan(text) : [], marks(text));
+const snapshot = (text, ext = '.tex') => readable(text, ext === '.tex' ? scan(text) : [], marks(markable(text, ext === '.tex' ? 'latex' : 'markdown')));
 
 if (require.main === module) {
     const file = process.argv[2];

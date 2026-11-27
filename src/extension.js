@@ -3,7 +3,7 @@
 const path = require('node:path');
 const vscode = require('vscode');
 const { scan, spans, hex, readable, renderOptions } = require('./colors');
-const { marks, compilePatterns } = require('./marks');
+const { marks, markable, compilePatterns } = require('./marks');
 const { preambleOf, findCandidates, runProbe, toProbed, cacheKey, serialize } = require('./probe');
 const { resolveEngine } = require('./engine');
 const { findOnPath, readLatexmkrc, compileProbe, probeArgs } = require('./probeRunner');
@@ -65,7 +65,7 @@ function refresh(editor) {
         ranges.get(t).push(range(s));
     }
     for (const t of types.values()) editor.setDecorations(t, ranges.get(t) || []);
-    const found = withMarks ? marks(text, patterns) : [];
+    const found = withMarks ? marks(markable(text, doc.languageId), patterns) : [];
     for (const [kind, t] of markTypes) editor.setDecorations(t, found.filter(m => m.kind === kind).map(range));
     applied.set(key, { text, colors, marks: found });
 }
