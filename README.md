@@ -15,10 +15,11 @@ Braces are matched to any depth; `%` comments, `\verb` and the verbatim, `Verbat
 
 ## Exact colors from LaTeX
 
-The colors above are predicted from the source on every keystroke. After each save, a probe compile of the document's root file asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors computed by macros, package commands (`todonotes`, `changes`) and any xcolor expression are exact. Extents, highlights and strikethroughs still come from the parser.
+The colors above are predicted from the source on every keystroke. When a root file is opened, and after each save, a probe compile of the document's root file asks LaTeX for the true colors: it compiles the preamble with a generated body that typesets each command used in the document, and each color expression given to `\textcolor`, `\color` or `\colorbox`, around a command that reports the current color. Those colors replace the predictions, so colors computed by macros, package commands (`todonotes`, `changes`) and any xcolor expression are exact. Extents, highlights and strikethroughs still come from the parser.
 
 - The engine is the one LaTeX Workshop would use (magic comments, the default recipe, latexmk flags and `latexmkrc`), else a `% !TEX program` magic comment, else `pdflatex`; `latexColors.probe.engine` overrides it. The engine must be on `PATH`.
-- The probe runs the preamble's code, as compiling the document does, with shell escape off, from the root's folder, writing only to a temporary directory that is deleted afterwards, and is stopped after `latexColors.probe.timeout` seconds. The probe does not run in untrusted workspaces.
+- The probe runs the preamble's code, as compiling the document does, with shell escape off. It runs inside a temporary directory that is deleted afterwards, with the root's folder first on `TEXINPUTS`, so `\input` and local packages resolve while files the preamble writes by relative path (`\openout`, Lua's `io.open`) land in the temporary directory. It is stopped after `latexColors.probe.timeout` seconds.
+- The probe does not run in untrusted workspaces. VS Code trusts a file opened outside any folder unless `security.workspace.trust.emptyWindow` is off.
 - Results are cached by engine, preamble and the set of commands, so reopening a file does not recompile. The **LaTeX Colors** output channel lists each run: engine, command line, time, and every command that failed or color that is undefined.
 
 ## Editorial marks
@@ -41,7 +42,7 @@ The colors above are predicted from the source on every keystroke. After each sa
 | `latexColors.marks.languages` | `["latex","tex","markdown","plaintext"]` | Language identifiers in which editorial marks are highlighted. |
 | `latexColors.liftDarkColors` | `true` | On dark themes, lighten colors too dark to read. |
 | `latexColors.minLuminance` | `0.35` | On dark themes, colors are lightened until their relative luminance reaches this value. |
-| `latexColors.probe.enabled` | `true` | After each save, compile the preamble with a generated body (shell escape off, in a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces. |
+| `latexColors.probe.enabled` | `true` | When a root file is opened and after each save, compile its preamble with a generated body (shell escape off, inside a temporary directory) so LaTeX reports the exact color of each command and color expression. Runs only in trusted workspaces. |
 | `latexColors.probe.engine` | `""` | TeX engine for the probe compile. |
 | `latexColors.probe.timeout` | `30` | Seconds before a probe compile is stopped. |
 <!-- /settings -->

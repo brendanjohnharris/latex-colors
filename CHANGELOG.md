@@ -7,6 +7,15 @@ All notable changes are listed here, in the form of [Keep a Changelog](https://k
 ### Added
 - Marketplace and Open VSX listing: publisher `brendanjohnharris`, icon, categories and keywords; `examples/demo.tex` shows every feature.
 - Release workflow: a version tag tests, packages and publishes to the Marketplace and Open VSX, and creates a GitHub Release with the `.vsix`; odd minor versions publish as pre-releases.
+- Local class files (`\documentclass`, `\LoadClass`) are read for definitions, probed and watched like local packages.
+
+### Changed
+- The probe runs inside its temporary directory, with the root's folder on `TEXINPUTS`, so files a preamble writes by relative path (including Lua's `io.open` under lualatex) no longer land next to the document.
+- `latexColors.marks.patterns` is ignored in untrusted workspaces, like the probe settings.
+
+### Fixed
+- A probe result is cached against the files as TeX reads them from disk, not against unsaved edits, which could keep a stale color after the edit was saved.
+- No console window opens for the probe on Windows.
 
 ## 0.7.0 - 2026-11-27
 

@@ -113,9 +113,10 @@ function report(list, r, ms) {
     });
 }
 
-// Live text for open documents, else the file through workspace.fs, cached by mtime; null if unreadable.
-async function readText(p) {
-    const open = vscode.workspace.textDocuments.find(d => d.uri.scheme === 'file' && d.uri.fsPath === p);
+// Live text for open documents (unless live is false), else the file through workspace.fs, cached by
+// mtime; null if unreadable.
+async function readText(p, live = true) {
+    const open = live && vscode.workspace.textDocuments.find(d => d.uri.scheme === 'file' && d.uri.fsPath === p);
     if (open) return open.getText();
     try {
         const uri = vscode.Uri.file(p), { mtime } = await vscode.workspace.fs.stat(uri), c = fileCache.get(p);
@@ -156,12 +157,13 @@ async function probe(root) {
     const { engine, reason } = resolveEngine({ override: cfg.get('probe.engine', ''), rootText, lw, rcTexts: readLatexmkrc(dir),
         onPath: n => !!(paths[n] = findOnPath(n)) });
     if (!engine) return log(`${name}: probe skipped: ${reason}`);
-    const key = cacheKey(engine, [preamble, ...others.filter(f => !f.body).map(f => f.text)].join('\n'), list);
+    const pulled = await Promise.all(others.filter(f => !f.body).map(f => readText(f.path, false))); // as TeX reads them: from disk
+    const key = cacheKey(engine, [preamble, ...pulled].join('\n'), list);
     if (!cache.has(key)) {
         log(`${name}: ${engine} (${reason}), ${list.length} candidates${truncated ? ` (${truncated} over the limit dropped)` : ''}`);
         log(`  ${paths[engine]} ${probeArgs('<tmp>').join(' ')} in ${dir}`);
         const t0 = Date.now();
-        const r = await runProbe(preamble, list, tex => compileProbe({ engine: paths[engine], cwd: dir, tex, timeout: cfg.get('probe.timeout', 30) }));
+        const r = await runProbe(preamble, list, tex => compileProbe({ engine: paths[engine], root: dir, tex, timeout: cfg.get('probe.timeout', 30) }));
         report(list, r, Date.now() - t0);
         if (r.error) return; // retried on the next save
         remember(key, toProbed(list, r.results));
@@ -189,7 +191,7 @@ function activate(context) {
     loadMarks();
     const toggle = key => () => config().update(key, !config().get(key),
         vscode.workspace.workspaceFolders ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global);
-    const watcher = vscode.workspace.createFileSystemWatcher('**/*.{tex,sty}');
+    const watcher = vscode.workspace.createFileSystemWatcher('**/*.{tex,sty,cls}');
     context.subscriptions.push(
         out,
         vscode.window.onDidChangeVisibleTextEditors(editors => {

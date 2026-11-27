@@ -87,6 +87,31 @@ suite('LaTeX Colors in VS Code', () => {
         }
     });
 
+    test('the probe cache follows the files TeX reads, not unsaved edits', async function () {
+        if (!findOnPath('pdflatex') && !process.env.CI) this.skip();
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-vscode-'));
+        try {
+            const main = path.join(dir, 'main.tex'), tones = path.join(dir, 'tones.tex');
+            fs.writeFileSync(main, '\\documentclass{article}\n\\usepackage{xcolor}\n\\input{tones}\n\\newcommand\\pk[1]{\\textcolor{\\tone}{#1}}\n' +
+                '\\begin{document}\n\\pk{x}\n\\end{document}\n');
+            fs.writeFileSync(tones, '\\newcommand\\tone{teal}\n');
+            await set('probe.enabled', true);
+            const tonesEditor = await show(tones);
+            await tonesEditor.edit(e => e.replace(new vscode.Range(0, 0, 0, 100), '\\newcommand\\tone{olive}')); // unsaved
+            await show(main);
+            let s = await spansWhen(x => at(x, '\\pk{x}'), 60000);
+            assert.deepStrictEqual(at(s, '\\pk{x}')?.style, { color: '#008080' }); // TeX reads tones.tex from disk
+            await tonesEditor.document.save();
+            s = await spansWhen(x => at(x, '\\pk{x}')?.style.color === '#808000', 30000);
+            assert.deepStrictEqual(at(s, '\\pk{x}')?.style, { color: '#808000' });
+        } finally {
+            await set('probe.enabled', false);
+            await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor').then(() => {}, () => {});
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test('the probe of the root colors a chapter', async function () {
         if (!findOnPath('pdflatex') && !process.env.CI) this.skip();
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-vscode-'));

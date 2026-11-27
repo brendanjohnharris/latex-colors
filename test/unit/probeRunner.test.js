@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { findOnPath, readLatexmkrc, compileProbe } = require('../../src/probeRunner');
+const { findOnPath, readLatexmkrc, compileProbe, spawnOptions } = require('../../src/probeRunner');
 
 const made = [], tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-test-')); made.push(d); return d; };
 test.after(() => made.forEach(d => fs.rmSync(d, { recursive: true, force: true })));
@@ -35,18 +35,19 @@ test('readLatexmkrc: user rc (XDG before ~/.latexmkrc), then project rc (.latexm
 
 // A fake engine: records its arguments, cwd and environment, writes a log into -output-directory.
 const FAKE = `for a in "$@"; do case "$a" in -output-directory=*) out="\${a#*=}";; -jobname=*) job="\${a#*=}";; esac; done
-printf '%s\\n' "$@" > "$MARK"; pwd >> "$MARK"; echo "$max_print_line" >> "$MARK"; echo "$out" >> "$MARK"
+printf '%s\\n' "$@" > "$MARK"; pwd >> "$MARK"; echo "$max_print_line" >> "$MARK"; echo "$TEXINPUTS" >> "$MARK"; echo "$out" >> "$MARK"
 printf 'LCBEGIN 0\\n' > "$out/$job.log"; cat "$out/$job.tex" >> "$out/$job.log"
 `;
 
-test('compileProbe: runs the engine in the root folder and returns the log; temp directory removed', posix, async () => {
+test('compileProbe: runs the engine in a temporary directory, reading from the root folder; returns the log; removes the directory', posix, async () => {
     const bin = tmp(), root = tmp(), mark = path.join(tmp(), 'mark');
     process.env.MARK = mark;
-    const log = await compileProbe({ engine: script(bin, 'pdflatex', FAKE), cwd: root, tex: 'TEXBODY', timeout: 10 });
-    const lines = fs.readFileSync(mark, 'utf8').trimEnd().split('\n'), [cwd, mpl, out] = lines.slice(-3), args = lines.slice(0, -3);
+    const log = await compileProbe({ engine: script(bin, 'pdflatex', FAKE), root, tex: 'TEXBODY', timeout: 10 });
+    const lines = fs.readFileSync(mark, 'utf8').trimEnd().split('\n'), [cwd, mpl, texinputs, out] = lines.slice(-4), args = lines.slice(0, -4);
     assert.match(log, /LCBEGIN 0\nTEXBODY/);
     assert.deepStrictEqual(args.slice(0, 3), ['-interaction=nonstopmode', '-no-shell-escape', '-no-file-line-error']);
-    assert.strictEqual(fs.realpathSync(cwd), fs.realpathSync(root));
+    assert.strictEqual(cwd, out); // writes by relative path land in the temporary directory
+    assert.ok(texinputs.startsWith(root + path.delimiter), texinputs); // \input and \usepackage still find the root's files
     assert.strictEqual(mpl, '10000');
     assert.ok(!fs.existsSync(out), 'temp directory left behind');
 });
@@ -55,7 +56,7 @@ test('compileProbe: timeout kills the process group and rejects', posix, async (
     const bin = tmp(), pids = path.join(tmp(), 'pids');
     const slow = script(bin, 'pdflatex', `sleep 30 & echo $! > "${pids}"; wait\n`);
     const t0 = Date.now();
-    await assert.rejects(compileProbe({ engine: slow, cwd: tmp(), tex: '', timeout: 0.3 }), /timed out/);
+    await assert.rejects(compileProbe({ engine: slow, root: tmp(), tex: '', timeout: 0.3 }), /timed out/);
     assert.ok(Date.now() - t0 < 5000);
     const child = +fs.readFileSync(pids, 'utf8');
     await new Promise(r => setTimeout(r, 100));
@@ -63,4 +64,12 @@ test('compileProbe: timeout kills the process group and rejects', posix, async (
 });
 
 test('compileProbe: missing engine rejects', async () =>
-    assert.rejects(compileProbe({ engine: path.join(tmp(), 'nosuch'), cwd: tmp(), tex: '', timeout: 5 })));
+    assert.rejects(compileProbe({ engine: path.join(tmp(), 'nosuch'), root: tmp(), tex: '', timeout: 5 })));
+
+test('spawnOptions: no console window on Windows; the caller\'s TEXINPUTS kept after the root folder', () => {
+    const o = spawnOptions('/tmp/x', '/doc', { TEXINPUTS: '/mine:' });
+    assert.strictEqual(o.windowsHide, true);
+    assert.strictEqual(o.cwd, '/tmp/x');
+    assert.strictEqual(o.env.TEXINPUTS, `/doc${path.delimiter}/mine:`);
+    assert.strictEqual(spawnOptions('/tmp/x', '/doc', {}).env.TEXINPUTS, `/doc${path.delimiter}`); // trailing separator: then the default path
+});

@@ -37,3 +37,5 @@ test('the default of latexColors.marks.patterns is the built-in marks', () => {
     const def = pkg.contributes.configuration.properties['latexColors.marks.patterns'].default;
     assert.deepStrictEqual(compilePatterns(def).patterns.map(p => [p.kind, p.color, p.re.source]), MARKS.map(m => [m.kind, m.color, m.re.source]));
 });
+test('latexColors.marks.patterns is restricted in untrusted workspaces (a hostile regex could stall the editor)', () =>
+    assert.ok(pkg.capabilities.untrustedWorkspaces.restrictedConfigurations.includes('latexColors.marks.patterns')));

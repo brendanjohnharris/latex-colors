@@ -10,6 +10,8 @@ jobs:
         vscode: [stable, insiders]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # no token in .git/config while dependencies install and tests run
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*

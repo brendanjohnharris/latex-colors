@@ -34,7 +34,7 @@ const list = async () => Object.keys(FILES).filter(p => p.endsWith('.tex'));
 
 test('includes: kinds, raw targets and body position, comments skipped', () =>
     assert.deepStrictEqual(includes(FILES[P('main.tex')]).map(i => [i.kind, i.target, i.body]), [
-        ['input', 'macros', false], ['package', 'local', false], ['package', 'amsmath', false],
+        ['class', 'article', false], ['input', 'macros', false], ['package', 'local', false], ['package', 'amsmath', false],
         ['include', 'chapters/one', true], ['subfile', 'parts/two.tex', true], ['import', 'appendix/three', true], ['input', 'main', true],
     ]));
 
@@ -63,3 +63,14 @@ test('findRoot: else the file itself', async () =>
     assert.strictEqual(await findRoot(P('orphan.tex'), FILES[P('orphan.tex')], { read, list }), P('orphan.tex')));
 test('findRoot: a magic comment loop stops', async () =>
     assert.ok([P('loop', 'a.tex'), P('loop', 'b.tex')].includes(await findRoot(P('loop', 'a.tex'), FILES[P('loop', 'a.tex')], { read, list }))));
+
+test('a local class file and the class it loads are collected', async () => {
+    const files = {
+        [P('t', 'main.tex')]: '\\documentclass[11pt]{thesis}\n\\begin{document}\\ben{x}\\end{document}\n',
+        [P('t', 'thesis.cls')]: '\\LoadClass{basethesis}\n\\newcommand\\ben[1]{\\textcolor{red}{#1}}\n',
+        [P('t', 'basethesis.cls')]: '\\definecolor{c}{rgb}{0,0,1}\n',
+    };
+    assert.deepStrictEqual(includes(files[P('t', 'thesis.cls')]).map(i => [i.kind, i.target]), [['class', 'basethesis']]);
+    assert.deepStrictEqual((await collect(P('t', 'main.tex'), async p => files[p] ?? null)).map(f => path.basename(f.path)),
+        ['main.tex', 'thesis.cls', 'basethesis.cls']);
+});

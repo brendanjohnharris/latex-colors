@@ -33,27 +33,36 @@ function readLatexmkrc(rootDir, env = process.env) {
 
 const probeArgs = dir => ['-interaction=nonstopmode', '-no-shell-escape', '-no-file-line-error', `-output-directory=${dir}`, '-jobname=lcprobe', path.join(dir, 'lcprobe.tex')];
 
+/**
+ * Engine process options: run in the temporary directory, so a preamble's writes by relative path
+ * (\openout, Lua's io.open) land there; root first on TEXINPUTS, so \input and local packages resolve.
+ * A trailing path separator keeps TeX's default search path after it.
+ */
+const spawnOptions = (dir, root, env = process.env) => ({
+    cwd: dir, stdio: /** @type {'ignore'} */ ('ignore'), detached: !WIN, windowsHide: true,
+    env: { ...env, TEXINPUTS: root + path.delimiter + (env.TEXINPUTS ?? ''), max_print_line: '10000', error_line: '254', half_error_line: '238' }, // unwrapped log lines
+});
+
 function killTree(child) {
     try {
-        if (WIN) spawn('taskkill', ['/pid', String(child.pid), '/T', '/F']);
+        if (WIN) spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true }).on('error', () => {});
         else process.kill(-child.pid, 'SIGKILL'); // detached: the engine leads its own process group
     } catch { /* already gone */ }
 }
 
 /**
- * Compile tex with engine from cwd (so relative \input resolves), output in a temporary directory.
+ * Compile tex with engine in a temporary directory, reading the document's files from root.
  * Resolves with the log text; rejects on timeout (seconds) or if the engine cannot start.
- * @param {{ engine: string, cwd: string, tex: string, timeout: number }} o
+ * @param {{ engine: string, root: string, tex: string, timeout: number }} o
  */
-async function compileProbe({ engine, cwd, tex, timeout }) {
+async function compileProbe({ engine, root, tex, timeout }) {
     const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'latex-colors-'));
     try {
         const file = path.join(dir, 'lcprobe.tex');
         await fsp.writeFile(file, tex);
         const args = probeArgs(dir);
-        const env = { ...process.env, max_print_line: '10000', error_line: '254', half_error_line: '238' }; // unwrapped log lines
         await new Promise((resolve, reject) => {
-            const child = spawn(engine, args, { cwd, env, stdio: 'ignore', detached: !WIN });
+            const child = spawn(engine, args, spawnOptions(dir, root));
             const timer = setTimeout(() => { killTree(child); reject(new Error(`timed out after ${timeout} s`)); }, timeout * 1000);
             child.on('error', e => { clearTimeout(timer); reject(e); });
             child.on('exit', () => { clearTimeout(timer); resolve(undefined); });
@@ -64,4 +73,4 @@ async function compileProbe({ engine, cwd, tex, timeout }) {
     }
 }
 
-module.exports = { findOnPath, readLatexmkrc, compileProbe, probeArgs };
+module.exports = { findOnPath, readLatexmkrc, compileProbe, probeArgs, spawnOptions };

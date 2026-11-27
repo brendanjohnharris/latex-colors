@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # no token in .git/config while dependencies install and tests run
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
@@ -44,12 +46,13 @@ jobs:
           PRE: ${{ steps.pkg.outputs.pre }}
         run: |
           awk -v v="$VERSION" 'index($0, "## " v " ") == 1 {on = 1; next} /^## / && on {exit} on' CHANGELOG.md > notes.md
-          gh release create "v$VERSION" "latex-colors-$VERSION.vsix" --title "v$VERSION" --notes-file notes.md ${PRE:+--prerelease}
+          gh release create "v$VERSION" "latex-colors-$VERSION.vsix" --title "v$VERSION" --notes-file notes.md ${PRE:+--prerelease} \
+            || gh release upload "v$VERSION" "latex-colors-$VERSION.vsix" --clobber # a rerun after a partial failure
       - name: Visual Studio Marketplace
-        run: npx vsce publish ${{ steps.pkg.outputs.pre }} --packagePath "latex-colors-${{ steps.pkg.outputs.version }}.vsix"
+        run: npx vsce publish ${{ steps.pkg.outputs.pre }} --skip-duplicate --packagePath "latex-colors-${{ steps.pkg.outputs.version }}.vsix"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
       - name: Open VSX
-        run: npx ovsx publish "latex-colors-${{ steps.pkg.outputs.version }}.vsix" # pre-release state comes from the package
+        run: npx ovsx publish "latex-colors-${{ steps.pkg.outputs.version }}.vsix" --skip-duplicate # pre-release state comes from the package
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}

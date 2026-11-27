@@ -35,7 +35,7 @@ test('probe with pdflatex', { skip: !PDFLATEX && !process.env.CI && 'pdflatex no
     try {
         fs.writeFileSync(path.join(root, 'colors.tex'), '\\definecolor{fromfile}{HTML}{6EA0F9}\n'); // relative \input from the root folder
         const { list } = findCandidates(DOC);
-        const r = await runProbe(preambleOf(DOC), list, tex => compileProbe({ engine: PDFLATEX, cwd: root, tex, timeout: 60 }));
+        const r = await runProbe(preambleOf(DOC), list, tex => compileProbe({ engine: PDFLATEX, root: root, tex, timeout: 60 }));
         const got = Object.fromEntries(list.map((c, k) => [c.kind === 'macro' ? '\\' + c.name : c.expr, r.results[k]]));
         const near = (key, want) => {
             assert.strictEqual(got[key].status, 'ok', `${key}: ${JSON.stringify(got[key])}`);
@@ -57,3 +57,22 @@ test('probe with pdflatex', { skip: !PDFLATEX && !process.env.CI && 'pdflatex no
         fs.rmSync(root, { recursive: true, force: true });
     }
 });
+
+// The preamble runs with the temporary directory as its working directory: relative writes land there.
+for (const engine of ['pdflatex', 'lualatex'])
+    test(`${engine}: the probe writes nothing into the document's folder`, { skip: !findOnPath(engine) && !(process.env.CI && engine === 'pdflatex') && `${engine} not on PATH`, timeout: 120000 }, async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lc-int-'));
+        try {
+            fs.writeFileSync(path.join(root, 'colors.tex'), '\\definecolor{fromfile}{HTML}{6EA0F9}\n');
+            const lua = engine === 'lualatex' ? '\\directlua{local f = io.open("lua.txt", "w") f:write("x") f:close()}\n' : '';
+            const doc = '\\documentclass{article}\n\\usepackage{xcolor}\n\\input{colors}\n' + lua +
+                '\\newwrite\\lcw\\immediate\\openout\\lcw=tex.txt\\immediate\\write\\lcw{x}\\immediate\\closeout\\lcw\n' +
+                '\\newcommand\\viafile[1]{\\textcolor{fromfile}{#1}}\n\\begin{document}\\viafile{a}\\end{document}\n';
+            const { list } = findCandidates(doc);
+            const r = await runProbe(preambleOf(doc), list, tex => compileProbe({ engine: findOnPath(engine), root: root, tex, timeout: 60 }));
+            assert.strictEqual(r.results[list.findIndex(c => c.name === 'viafile')].status, 'ok'); // \input from the root still resolves
+            assert.deepStrictEqual(fs.readdirSync(root), ['colors.tex']);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });

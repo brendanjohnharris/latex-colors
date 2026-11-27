@@ -7,19 +7,21 @@ const { mask, readArg, readOpt } = require('./colors');
 
 const ROOT_MAGIC = /^(?:%\s*!\s*T[Ee]X\sroot\s*=\s*(.*\.(?:tex|[jrsRS]nw|[rR]tex|jtexw))$)/m; // LaTeX Workshop 10.20.1 core/root.js
 const SUBFILES = /\\documentclass\s*\[([^\]]*)\]\s*\{subfiles\}/;
-const INCLUDE = /\\(input|include|subfile|import|usepackage|RequirePackage)(?![A-Za-z@])/g;
+const INCLUDE = /\\(input|include|subfile|import|usepackage|RequirePackage|documentclass|LoadClass)(?![A-Za-z@])/g;
 const BEGIN_DOC = /\\begin\s*\{document\}/;
 
 /** Files a text pulls in: { kind, target, body } in order; body is true after \begin{document}. */
 function includes(text) {
     const code = mask(text), begin = BEGIN_DOC.exec(code)?.index ?? Infinity, out = [];
     for (const m of code.matchAll(INCLUDE)) {
+        const opts = ['usepackage', 'RequirePackage', 'documentclass', 'LoadClass'].includes(m[1]); // [options]{names}
         let a = readArg(code, m.index + m[0].length);
-        if (!a && m[1] !== 'usepackage' && m[1] !== 'RequirePackage') continue;
+        if (!a && !opts) continue;
         const body = m.index > begin;
-        if (m[1] === 'usepackage' || m[1] === 'RequirePackage') {
+        if (opts) {
             a = readArg(code, readOpt(code, m.index + m[0].length).end);
-            for (const p of a ? a.inner.split(',').map(s => s.trim()).filter(Boolean) : []) out.push({ kind: 'package', target: p, body });
+            const kind = m[1] === 'documentclass' || m[1] === 'LoadClass' ? 'class' : 'package';
+            for (const p of a ? a.inner.split(',').map(s => s.trim()).filter(Boolean) : []) out.push({ kind, target: p, body });
         } else if (m[1] === 'import') {
             const b = readArg(code, a.end);
             if (b) out.push({ kind: 'import', target: path.posix.join(a.inner.trim(), b.inner.trim()), body });
@@ -28,7 +30,7 @@ function includes(text) {
     return out;
 }
 
-// Paths to try for an include, in TeX's order: \input, \include, \import and packages are relative to
+// Paths to try for an include, in TeX's order: \input, \include, \import, packages and classes are relative to
 // the root's folder (the compile's working directory); \subfile to the including file's folder.
 function candidates(inc, rootDir, fileDir) {
     const t = inc.target, withTex = t.endsWith('.tex') ? [t] : [t + '.tex'];
@@ -37,6 +39,7 @@ function candidates(inc, rootDir, fileDir) {
         case 'include': case 'import': return withTex.map(x => path.resolve(rootDir, x));
         case 'subfile': return withTex.map(x => path.resolve(fileDir, x));
         case 'package': return [path.resolve(rootDir, t + '.sty')];
+        case 'class': return [path.resolve(rootDir, t + '.cls')];
     }
     return [];
 }
